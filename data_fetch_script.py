@@ -47,3 +47,14 @@ print(combined_df.head())
 combined_df = combined_df[['Indicator',
                            'SpatialDim', 'TimeDim', 'NumericValue']]
 combined_df.columns = ['Indicator', 'Country', 'Year', 'Value']
+
+# Pivoting the data so that each indicator becomes a column
+final_df = combined_df.pivot_table(
+    index=['Country', 'Year'],
+    columns='Indicator',
+    values='Value'
+).reset_index()
+
+# saving the csv
+final_df.to_csv('tb_incidence_data.csv', index=False)
+print("Data saved to tb_incidence_data.csv")
