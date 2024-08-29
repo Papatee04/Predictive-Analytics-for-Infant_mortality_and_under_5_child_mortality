@@ -34,8 +34,16 @@ data_frames = []
 for indicator_name, indicator_code in indicators.items():
     df = fetch_indicator_data(indicator_code)
     if not df.empty:
-        df['Indicator'] = indicator_name  # Add a column for the indicator name
+        # Adding a column for the indicator name
+        df['Indicator'] = indicator_name
         data_frames.append(df)
 
 # Combine all the fetched data into one DataFrame
 combined_df = pd.concat(data_frames, ignore_index=True)
+
+print(combined_df.head())
+
+# Selecting Relevant Columns as the WHO API usually returns a lot of metadata. so I will Focus on the key columns:
+combined_df = combined_df[['Indicator',
+                           'SpatialDim', 'TimeDim', 'NumericValue']]
+combined_df.columns = ['Indicator', 'Country', 'Year', 'Value']
