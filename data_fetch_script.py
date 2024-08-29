@@ -1,10 +1,13 @@
 import requests
 import pandas as pd
 
+# function to fetch data for Zambia
 
-# function to fetch data
+
 def fetch_indicator_data(indicator_code):
-    base_url = f"https://ghoapi.azureedge.net/api/{indicator_code}"
+    country_code = "ZMB"
+    base_url = f"https://ghoapi.azureedge.net/api/{
+        indicator_code}?$filter=SpatialDim eq '{country_code}'"
     response = requests.get(base_url)
 
     if response.status_code == 200:
@@ -41,9 +44,7 @@ for indicator_name, indicator_code in indicators.items():
 # Combine all the fetched data into one DataFrame
 combined_df = pd.concat(data_frames, ignore_index=True)
 
-print(combined_df.head())
-
-# Selecting Relevant Columns as the WHO API usually returns a lot of metadata. so I will Focus on the key columns:
+# Selecting Relevant Columns
 combined_df = combined_df[['Indicator',
                            'SpatialDim', 'TimeDim', 'NumericValue']]
 combined_df.columns = ['Indicator', 'Country', 'Year', 'Value']
@@ -56,5 +57,5 @@ final_df = combined_df.pivot_table(
 ).reset_index()
 
 # saving the csv
-final_df.to_csv('tb_incidence_data.csv', index=False)
-print("Data saved to tb_incidence_data.csv")
+final_df.to_csv('tb_incidence_data_zambia.csv', index=False)
+print("Data saved to tb_incidence_data_zambia.csv")
