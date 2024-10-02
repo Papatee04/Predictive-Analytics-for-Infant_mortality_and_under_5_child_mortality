@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Child Mortality Dashboard</title>
+    <link rel="stylesheet" href="{% static 'dashboard/styles.css' %}">
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const numberOfChildrenField = document.getElementById('id_number_of_children');
+            const maritalStatusField = document.getElementById('id_marital_status');
+
+            maritalStatusField.addEventListener('change', function () {
+                if (this.value === '0') {
+                    numberOfChildrenField.disabled = true;
+                    numberOfChildrenField.value = 0;
+                } else {
+                    numberOfChildrenField.disabled = false;
+                }
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <h1>Child Mortality Dashboard</h1>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Submit</button>
+    </form>
+
+    {% if prediction is not None %}
+    <div class="prediction-result">
+        <strong>Prediction Result:</strong>
+        {% if prediction == 1 %}
+        Child is alive
+        {% else %}
+        Child is not alive
+        {% endif %}
+    </div>
+    {% endif %}
+</body>
+
+</html>

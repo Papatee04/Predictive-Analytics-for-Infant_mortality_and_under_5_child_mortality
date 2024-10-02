@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Success</title>
+    <link rel="stylesheet" href="{% static 'dashboard/styles.css' %}">
+</head>
+
+<body>
+    <h1>Prediction Results</h1>
+    <div class="success-message">
+        <p>The predicted outcome is: {{ prediction }}</p>
+        <p>
+            {% if prediction == 1 %}
+            The child is alive.
+            {% else %}
+            The child is not alive.
+            {% endif %}
+        </p>
+    </div>
+</body>
+
+</html>
