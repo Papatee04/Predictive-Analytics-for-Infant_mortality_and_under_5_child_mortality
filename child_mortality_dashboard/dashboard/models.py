@@ -25,6 +25,17 @@ class ChildMortalityForm(models.Model):
         (2, 'Formerly in union/living with a man'),
     ]
 
+    AGE_AT_FIRST_SEX_CHOICES = [(i, f'{i} years') for i in range(7, 50)] + [
+        (0, 'Not had sex'),
+        (96, 'At first union'),
+        (98, 'Don\'t know'),
+    ]
+
+    USE_FAMILY_PLANNING_CHOICES = [
+        (0, 'No'),
+        (1, 'Yes'),
+    ]
+
     cause_of_fistula = models.IntegerField(
         choices=CAUSE_OF_FISTULA_CHOICES,
         help_text="Cause of fistula"
@@ -41,9 +52,25 @@ class ChildMortalityForm(models.Model):
         help_text="Marital status"
     )
     age_at_first_sex = models.IntegerField(
-        choices=[(i, f'{i} years') for i in range(
-            7, 50)] + [(0, 'Not had sex'), (96, 'At first union'), (98, 'Don\'t know')],
+        choices=AGE_AT_FIRST_SEX_CHOICES,
         help_text="Age at first sexual encounter"
+    )
+    use_family_planning = models.IntegerField(
+        choices=USE_FAMILY_PLANNING_CHOICES,
+        help_text="Use of family planning"
+    )
+    education_years = models.IntegerField(
+        help_text="Number of years of education"
+    )
+    entries_in_birth_history = models.IntegerField(
+        help_text="Entries in birth history"
+    )
+    total_children_ever_born = models.IntegerField(
+        help_text="Total children ever born"
+    )
+    ever_been_married = models.IntegerField(
+        choices=[(0, 'No'), (1, 'Formerly married'), (2, 'Lived with a man')],
+        help_text="Ever been married or in union"
     )
 
     def __str__(self):
