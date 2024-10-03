@@ -20,7 +20,7 @@ def dashboard(request):
                 data['number_of_children'],         # v218
                 int(data['current_pregnancy']),     # v220
                 # v219 (Add this to the form)
-                data['number_of_living_children'],
+                data['number_of_living_children'],  # 219
                 int(data['marital_status']),        # v502
                 # v224 (Add this to the form)
                 int(data['entries_in_birth_history']),

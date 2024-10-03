@@ -32,24 +32,45 @@ class ChildMortalityFormForm(forms.ModelForm):
         (98, 'Don\'t know'),
     ]
 
+    USE_FAMILY_PLANNING_CHOICES = [
+        (0, 'No'),
+        (1, 'Yes'),
+    ]
+
     cause_of_fistula = forms.ChoiceField(
         choices=CAUSE_OF_FISTULA_CHOICES, label="Cause of Fistula"
     )
-
     number_of_children = forms.IntegerField(
         min_value=0, max_value=20, label="Number of Living Children"
+    )
+    number_of_living_children = forms.IntegerField(
+        min_value=0, max_value=20, label="Number of Living Children + Current Pregnancy"
     )
 
     current_pregnancy = forms.ChoiceField(
         choices=CURRENT_PREGNANCY_CHOICES, label="Living Children + Current Pregnancy"
     )
-
     marital_status = forms.ChoiceField(
         choices=MARITAL_STATUS_CHOICES, label="Marital Status"
     )
-
     age_at_first_sex = forms.ChoiceField(
         choices=AGE_AT_FIRST_SEX_CHOICES, label="Age at First Sex"
+    )
+    use_family_planning = forms.ChoiceField(
+        choices=USE_FAMILY_PLANNING_CHOICES, label="Use of Family Planning"
+    )
+    education_years = forms.IntegerField(
+        min_value=0, max_value=25, label="Number of Years of Education"
+    )
+    entries_in_birth_history = forms.IntegerField(
+        min_value=0, max_value=20, label="Entries in Birth History"
+    )
+    total_children_ever_born = forms.IntegerField(
+        min_value=0, max_value=20, label="Total Children Ever Born"
+    )
+    ever_been_married = forms.ChoiceField(
+        choices=[(0, 'No'), (1, 'Formerly married'), (2, 'Lived with a man')],
+        label="Ever Been Married or in Union"
     )
 
     class Meta:
@@ -58,26 +79,10 @@ class ChildMortalityFormForm(forms.ModelForm):
             'cause_of_fistula',
             'number_of_children',
             'current_pregnancy',
-            'number_of_living_children',
+            'number_of_living_children',  # Add this line
             'marital_status',
+            'age_at_first_sex',
             'entries_in_birth_history',
             'total_children_ever_born',
-            'age_at_first_sex',
             'ever_been_married',
         ]
-
-    def clean_current_pregnancy(self):
-        current_pregnancy = int(self.cleaned_data.get('current_pregnancy'))
-        if current_pregnancy not in dict(self.CURRENT_PREGNANCY_CHOICES).keys():
-            raise forms.ValidationError(
-                "Current pregnancy must be a valid choice (0-6)."
-            )
-        return current_pregnancy
-
-    def clean_marital_status(self):
-        marital_status = int(self.cleaned_data.get('marital_status'))
-        if marital_status not in dict(self.MARITAL_STATUS_CHOICES).keys():
-            raise forms.ValidationError(
-                "Select a valid marital status choice (0-2)."
-            )
-        return marital_status

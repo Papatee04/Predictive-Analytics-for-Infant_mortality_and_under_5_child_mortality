@@ -43,6 +43,10 @@ class ChildMortalityForm(models.Model):
     number_of_children = models.IntegerField(
         help_text="Number of living children"
     )
+    number_of_living_children = models.IntegerField(
+        help_text="Number of living children + current pregnancy"
+    )
+
     current_pregnancy = models.IntegerField(
         choices=CURRENT_PREGNANCY_CHOICES,
         help_text="Living children + Current Pregnancy"
@@ -54,13 +58,6 @@ class ChildMortalityForm(models.Model):
     age_at_first_sex = models.IntegerField(
         choices=AGE_AT_FIRST_SEX_CHOICES,
         help_text="Age at first sexual encounter"
-    )
-    use_family_planning = models.IntegerField(
-        choices=USE_FAMILY_PLANNING_CHOICES,
-        help_text="Use of family planning"
-    )
-    education_years = models.IntegerField(
-        help_text="Number of years of education"
     )
     entries_in_birth_history = models.IntegerField(
         help_text="Entries in birth history"
