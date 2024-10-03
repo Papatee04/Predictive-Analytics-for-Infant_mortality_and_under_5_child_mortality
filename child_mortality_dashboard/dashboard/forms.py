@@ -58,10 +58,12 @@ class ChildMortalityFormForm(forms.ModelForm):
             'cause_of_fistula',
             'number_of_children',
             'current_pregnancy',
+            'number_of_living_children',
             'marital_status',
+            'entries_in_birth_history',
+            'total_children_ever_born',
             'age_at_first_sex',
-            'use_family_planning',
-            'education_years',
+            'ever_been_married',
         ]
 
     def clean_current_pregnancy(self):

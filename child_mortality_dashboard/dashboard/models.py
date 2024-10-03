@@ -40,13 +40,6 @@ class ChildMortalityForm(models.Model):
         choices=MARITAL_STATUS_CHOICES,
         help_text="Marital status"
     )
-    use_family_planning = models.BooleanField(
-        default=False,
-        help_text="Using family planning"
-    )
-    education_years = models.IntegerField(
-        help_text="Years of education"
-    )
     age_at_first_sex = models.IntegerField(
         choices=[(i, f'{i} years') for i in range(
             7, 50)] + [(0, 'Not had sex'), (96, 'At first union'), (98, 'Don\'t know')],
