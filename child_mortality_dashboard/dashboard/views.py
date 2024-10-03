@@ -33,7 +33,13 @@ def dashboard(request):
 
             prediction = model.predict([X_input])[0]
 
-            return render(request, 'dashboard/dashboard.html', {'form': form, 'prediction': prediction})
+            # Map prediction result to user-friendly message
+            if prediction == 1:
+                prediction_message = "Low chance of child mortality"
+            else:
+                prediction_message = "High chance of child mortality"
+
+            return render(request, 'dashboard/dashboard.html', {'form': form, 'prediction_message': prediction_message})
         else:
             print("Form errors:", form.errors)
     else:

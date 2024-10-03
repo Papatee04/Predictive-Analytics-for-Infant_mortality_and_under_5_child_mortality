@@ -33,14 +33,10 @@
         <button type="submit">Submit</button>
     </form>
 
-    {% if prediction is not None %}
+    {% if prediction_message %}
     <div class="prediction-result">
         <strong>Prediction Result:</strong>
-        {% if prediction == 1 %}
-        Child is alive
-        {% else %}
-        Child is not alive
-        {% endif %}
+        <p>{{ prediction_message }}</p>
     </div>
     {% endif %}
 </body>
