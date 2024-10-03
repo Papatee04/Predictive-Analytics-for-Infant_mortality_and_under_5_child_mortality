@@ -7,11 +7,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Child Mortality Dashboard</title>
     <link rel="stylesheet" href="{% static 'dashboard/styles.css' %}">
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const numberOfChildrenField = document.getElementById('id_number_of_children');
             const maritalStatusField = document.getElementById('id_marital_status');
-
             maritalStatusField.addEventListener('change', function () {
                 if (this.value === '0') {
                     numberOfChildrenField.disabled = true;
@@ -25,20 +28,73 @@
 </head>
 
 <body>
-    <h1>Child Mortality Dashboard</h1>
-
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Submit</button>
-    </form>
-
-    {% if prediction_message %}
-    <div class="prediction-result">
-        <strong>Prediction Result:</strong>
-        <p>{{ prediction_message }}</p>
+    <h1 class="text-2xl font-bold mb-4">Child Mortality Dashboard</h1>
+    <div class="flex">
+        <div class="w-1/2 pr-4">
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit"
+                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Submit</button>
+            </form>
+            {% if prediction_message %}
+            <div class="prediction-result mt-4">
+                <strong>Prediction Result:</strong>
+                <p>{{ prediction_message }}</p>
+            </div>
+            {% endif %}
+        </div>
+        <div class="w-1/2 pl-4">
+            <div id="dashboard-root"></div>
+        </div>
     </div>
-    {% endif %}
+    <script type="text/babel">
+        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
+
+        const ModelComparisonDashboard = () => {
+            const modelData = [
+                { metric: 'Accuracy', 'Logistic Regression': 0.999269, 'Random Forest': 1 },
+                { metric: 'Precision', 'Logistic Regression': 0.9990234, 'Random Forest': 1 },
+                { metric: 'Recall', 'Logistic Regression': 1, 'Random Forest': 1 },
+                { metric: 'AUC', 'Logistic Regression': 0.9985528, 'Random Forest': 1 },
+            ];
+
+            const keyInsights = [
+                "Maternal health and obstetric care are critical factors in child mortality.",
+                "Family size and resource strain impact child survival rates.",
+                "Marital status and social support affect child mortality risks.",
+                "Maternal education and family planning are associated with lower child mortality.",
+            ];
+
+            return (
+                <div className="dashboard-container">
+                    <h2 className="text-xl font-bold mb-4">Model Comparison</h2>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={modelData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="metric" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="Logistic Regression" fill="#8884d8" />
+                            <Bar dataKey="Random Forest" fill="#82ca9d" />
+                        </BarChart>
+                    </ResponsiveContainer>
+
+                    <div className="mt-8">
+                        <h2 className="text-xl font-bold mb-4">Key Insights</h2>
+                        <ul className="list-disc pl-5">
+                            {keyInsights.map((insight, index) => (
+                                <li key={index} className="mb-2">{insight}</li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<ModelComparisonDashboard />, document.getElementById('dashboard-root'));
+    </script>
 </body>
 
 </html>
