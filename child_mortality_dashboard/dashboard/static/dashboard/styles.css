@@ -3,7 +3,7 @@ body {
     font-family: 'Arial', sans-serif;
     line-height: 1.6;
     color: #333;
-    max-width: 1200px;  /* Increased to accommodate the side-by-side layout */
+    max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
     background-color: #f4f4f4;
@@ -15,35 +15,39 @@ h1 {
     border-bottom: 2px solid #3498db;
     padding-bottom: 10px;
 }
-/* Layout styles */
-.flex {
+
+/* Flexbox layout */
+.dashboard-container {
     display: flex;
-    flex-wrap: wrap;
     gap: 20px;
-}
-.w-1\/2 {
-    flex: 1;
-    min-width: 300px;
-}
-/* Form styles */
-form {
     background-color: #fff;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
-label {
+.w-1\/2 {
+    flex: 1;
+    min-width: 300px;
+}
+
+/* Form styles */
+.form-container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+form label {
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
 }
-input[type="text"], input[type="number"], select {
+form input[type="text"], form input[type="number"], form select {
     width: 100%;
     padding: 8px;
     margin-bottom: 15px;
     border: 1px solid #ddd;
     border-radius: 4px;
-    box-sizing: border-box;
 }
 button[type="submit"] {
     background-color: #3498db;
@@ -53,47 +57,32 @@ button[type="submit"] {
     border-radius: 4px;
     cursor: pointer;
     font-size: 16px;
-    transition: background-color 0.3s ease;
 }
 button[type="submit"]:hover {
     background-color: #2980b9;
 }
-/* Prediction result styles */
-.prediction-result {
+
+/* Chart and Insights styling */
+.chart-container {
+    margin-bottom: 20px;
+}
+.insights-container {
     margin-top: 20px;
-    padding: 15px;
-    background-color: #e8f4fd;
-    border-left: 5px solid #3498db;
-    border-radius: 4px;
 }
-.prediction-result strong {
-    color: #2c3e50;
-}
-/* Dashboard styles */
-.dashboard-container {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-.dashboard-container h2 {
+.insights-container h2 {
     color: #2c3e50;
     margin-bottom: 15px;
 }
-/* Key Insights styles */
-.dashboard-container ul {
+.insights-container ul {
     padding-left: 20px;
 }
-.dashboard-container li {
+.insights-container li {
     margin-bottom: 10px;
 }
+
 /* Responsive design */
 @media (max-width: 768px) {
-    .flex {
+    .dashboard-container {
         flex-direction: column;
-    }
-    
-    .w-1\/2 {
-        width: 100%;
     }
 }
