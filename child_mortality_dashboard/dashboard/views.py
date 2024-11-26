@@ -18,10 +18,9 @@ import plotly.graph_objs as go
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import pandas as pd
-import io
-import base64
-import shap
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 # Load the pre-trained model
@@ -218,82 +217,11 @@ def create_3d_risk_scatter_plot(data):
     # Convert to JSON for frontend rendering
     return fig.to_json()
 
-def generate_shap_explanation(model, X_train, X_input):
-    """
-    Generate SHAP explanation for a single prediction
-    
-    Parameters:
-    - model: Trained machine learning model
-    - X_train: Training dataset used for background distribution
-    - X_input: Input features for a single prediction
-    
-    Returns:
-    - SHAP explanation plot as base64 encoded image
-    - SHAP values summary
-    """
-    # Use kernel explainer for model-agnostic explanation
-    explainer = shap.KernelExplainer(model.predict_proba, X_train)
-    
-    # Reshape input to match model's expected input
-    X_input = np.array(X_input).reshape(1, -1)
-    
-    # Calculate SHAP values
-    shap_values = explainer.shap_values(X_input)
-    
-    # Create a summary plot
-    plt.figure(figsize=(10, 6))
-    shap.summary_plot(
-        shap_values, 
-        X_input, 
-        feature_names=[
-            'Cause of Fistula',
-            'Number of Children',
-            'Current Pregnancy',
-            'Living Children',
-            'Marital Status',
-            'Birth History Entries',
-            'Total Children Born',
-            'Age at First Sex',
-            'Ever Been Married'
-        ], 
-        plot_type='bar',
-        show=False
-    )
-    
-    # Save plot to a bytes buffer
-    buf = io.BytesIO()
-    plt.tight_layout()
-    plt.savefig(buf, format='png', bbox_inches='tight')
-    plt.close()
-    
-    # Encode the image to base64
-    image_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
-    
-    # Prepare SHAP value summary
-    shap_summary = []
-    for name, value in zip([
-        'Cause of Fistula',
-        'Number of Children',
-        'Current Pregnancy',
-        'Living Children',
-        'Marital Status',
-        'Birth History Entries',
-        'Total Children Born',
-        'Age at First Sex',
-        'Ever Been Married'
-    ], shap_values[0]):
-        shap_summary.append({
-            'feature': name,
-            'shap_value': float(value),
-            'impact': 'positive' if value > 0 else 'negative'
-        })
-    
-    # Sort by absolute SHAP value
-    shap_summary = sorted(shap_summary, key=lambda x: abs(x['shap_value']), reverse=True)
-    
-    return image_base64, shap_summary
 
 def dashboard(request):
+    # Initialize these variables at the beginning of the function
+    shap_plot_base64 = None
+    shap_summary = None
     # Get actual counts from the database
     total_assessments = ChildMortalityAssessment.objects.count()
     high_risk_cases = ChildMortalityAssessment.objects.filter(risk_prediction=1).count()
@@ -430,7 +358,9 @@ def dashboard(request):
                 'active_monitoring': active_monitoring,
                 'success_rate': success_rate,
                 'lime_explanation': lime_explanation,
-                '3d_risk_scatter_plot': risk_scatter_plot
+                '3d_risk_scatter_plot': risk_scatter_plot,
+                'shap_plot_base64': shap_plot_base64,
+                'shap_summary': shap_summary
             })
 
     else:
@@ -446,7 +376,9 @@ def dashboard(request):
         'active_monitoring': active_monitoring,
         'success_rate': success_rate,
         'lime_explanation': None,
-        '3d_risk_scatter_plot': risk_scatter_plot
+        '3d_risk_scatter_plot': risk_scatter_plot,
+        'shap_plot_base64': shap_plot_base64,
+        'shap_summary': shap_summary
     })
 
 
