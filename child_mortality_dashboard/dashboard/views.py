@@ -33,7 +33,10 @@ def generate_lime_explanation(model, feature_names, X_input):
     """
     # Load the training data to help LIME understand feature distributions
     # Assuming you have a training dataset saved
-    X_train = joblib.load('path/to/X_train.pkl')
+    X_train = joblib.load('C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/X_train.pkl')
+    
+    # Convert input to NumPy array
+    X_input = np.array(X_input).reshape(1, -1)
     
     # Create a LIME explainer
     explainer = lime.lime_tabular.LimeTabularExplainer(
@@ -46,7 +49,7 @@ def generate_lime_explanation(model, feature_names, X_input):
     
     # Generate explanation
     explanation = explainer.explain_instance(
-        X_input, 
+        X_input[0], 
         model.predict_proba, 
         num_features=10,  # Number of top features to explain
         top_labels=1
@@ -72,9 +75,10 @@ def generate_lime_explanation(model, feature_names, X_input):
     
     explanation_html += "</table>"
     
-    # Add probability and prediction information
-    proba = model.predict_proba([X_input])[0]
-    prediction = model.predict([X_input])[0]
+    # Use:
+    proba = model.predict_proba(np.array(X_input).reshape(1, -1))[0]
+    # Use:
+    prediction = model.predict(np.array(X_input).reshape(1, -1))[0]
     
     prediction_text = "Low Mortality Risk" if prediction == 1 else "High Mortality Risk"
     prediction_color = "text-green-600" if prediction == 1 else "text-red-600"
@@ -154,24 +158,38 @@ def dashboard(request):
         if form.is_valid():
             data = form.cleaned_data
 
-            # Ensure to capture all the required fields
+            # Define feature names to match your model's input
+            feature_names = [
+                'cause_of_fistula',
+                'number_of_children',
+                'current_pregnancy',
+                'number_of_living_children',
+                'marital_status',
+                'entries_in_birth_history',
+                'total_children_ever_born',
+                'age_at_first_sex',
+                'ever_been_married'
+            ]
+
+            # Prepare input for prediction and LIME
             X_input = [
-                int(data['cause_of_fistula']),      # s1205
-                data['number_of_children'],         # v218
-                int(data['current_pregnancy']),     # v220
-                # v219 (Add this to the form)
-                data['number_of_living_children'],  # 219
-                int(data['marital_status']),        # v502
-                # v224 (Add this to the form)
+                int(data['cause_of_fistula']),
+                data['number_of_children'],
+                int(data['current_pregnancy']),
+                data['number_of_living_children'],
+                int(data['marital_status']),
                 int(data['entries_in_birth_history']),
-                # v201 (Add this to the form)
                 int(data['total_children_ever_born']),
-                int(data['age_at_first_sex']),      # v525
-                # v535 (Add this to the form)
+                int(data['age_at_first_sex']),
                 int(data['ever_been_married'])
             ]
 
-            prediction = model.predict([X_input])[0]
+            # Make prediction
+            # Use:
+            prediction = model.predict(np.array(X_input).reshape(1, -1))[0]
+
+            # Generate LIME explanation
+            lime_explanation = generate_lime_explanation(model, feature_names, X_input)
 
             # Create a new ChildMortalityAssessment object
             new_assessment = ChildMortalityAssessment.objects.create(
@@ -204,7 +222,8 @@ def dashboard(request):
                 'total_assessments': total_assessments,
                 'high_risk_cases': high_risk_cases,
                 'active_monitoring': active_monitoring,
-                'success_rate': success_rate
+                'success_rate': success_rate,
+                'lime_explanation': lime_explanation
             })
 
     else:
@@ -218,7 +237,8 @@ def dashboard(request):
         'total_assessments': total_assessments,
         'high_risk_cases': high_risk_cases,
         'active_monitoring': active_monitoring,
-        'success_rate': success_rate
+        'success_rate': success_rate,
+        'lime_explanation': None
     })
 
 
