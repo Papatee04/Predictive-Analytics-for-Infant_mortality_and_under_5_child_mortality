@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Child Mortality Prediction Platform{% endblock %}</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Remix Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css" rel="stylesheet">
+
+    <!-- Custom Styles for Loading Indicator -->
+    <style>
+        /* Global theme colors inspired by child health and medical themes */
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --background-color: #f4f6f7;
+        }
+
+        /* Advanced Loading Spinner */
+        .spinner {
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-top-color: var(--secondary-color);
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Pulse animation for form interactions */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .pulse-hover:hover {
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        /* Soft shadow and transition effects */
+        .auth-card {
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .auth-card:hover {
+            box-shadow: 0 14px 28px rgba(0, 0, 0, 0.10), 0 10px 10px rgba(0, 0, 0, 0.08);
+        }
+    </style>
+
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body class="bg-gray-50 font-sans antialiased">
+    <!-- Optional Top Navigation -->
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <h1 class="text-2xl font-bold text-gray-900">
+                            <i class="ri-health-book-line mr-2 text-blue-600"></i>
+                            Child Health Platform
+                        </h1>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="container mx-auto px-4 py-8 max-w-xl">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Global Loading Overlay -->
+    <div id="global-loading"
+        class="fixed inset-0 bg-opacity-50 bg-gray-900 z-50 flex items-center justify-center hidden">
+        <div class="spinner w-16 h-16"></div>
+    </div>
+
+    <!-- Global JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Form submission loading
+            const forms = document.querySelectorAll('form');
+            const globalLoading = document.getElementById('global-loading');
+
+            forms.forEach(form => {
+                form.addEventListener('submit', function () {
+                    globalLoading.classList.remove('hidden');
+                });
+            });
+
+            // Optional: Hide loading on page load complete
+            window.addEventListener('load', function () {
+                globalLoading.classList.add('hidden');
+            });
+        });
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+
+</html>

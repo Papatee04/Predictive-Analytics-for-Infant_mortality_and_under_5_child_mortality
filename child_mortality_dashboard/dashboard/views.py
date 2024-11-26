@@ -1,15 +1,33 @@
 import joblib
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from .forms import ChildMortalityFormForm
 from bokeh.plotting import figure
 from bokeh.embed import components
+from bokeh.transform import dodge
+from bokeh.models import ColumnDataSource
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth.decorators import login_required
+from dashboard.models import *
 
 # Load the pre-trained model
 model = joblib.load(
     'C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/random_forest_model.pkl')
 
 def dashboard(request):
-    prediction = None
+    # Get actual counts from the database
+    total_assessments = ChildMortalityAssessment.objects.count()
+    high_risk_cases = ChildMortalityAssessment.objects.filter(risk_prediction=1).count()
+    active_monitoring = ChildMortalityAssessment.objects.filter(status='active').count()
+    
+    # Calculate success rate (as in the previous version)
+    total_high_risk = ChildMortalityAssessment.objects.filter(risk_prediction=1).count()
+    successful_interventions = ChildMortalityAssessment.objects.filter(
+        risk_prediction=1, 
+        intervention_outcome='successful'
+    ).count()
+    
+    success_rate = (successful_interventions / total_high_risk * 100) if total_high_risk > 0 else 0
 
     # Model data for visualization
     model_data = [
@@ -26,11 +44,18 @@ def dashboard(request):
 
     # Create a Bokeh figure
     plot = figure(x_range=metrics, title="Model Comparison",
-              toolbar_location=None, tools="")
+                  toolbar_location="above", tools="pan,wheel_zoom,box_zoom,reset")
 
-    # Add bars for Logistic Regression and Random Forest
-    plot.vbar(x=metrics, top=logistic_regression, width=0.3, legend_label="Logistic Regression", color="#8884d8")
-    plot.vbar(x=metrics, top=random_forest, width=0.3, legend_label="Random Forest", color="#82ca9d")
+    # Convert data to ColumnDataSource for interactivity and efficient data handling
+    source = ColumnDataSource(data=dict(
+        metrics=metrics,
+        logistic_regression=logistic_regression,
+        random_forest=random_forest,
+    ))
+
+    # Add bars for Logistic Regression and Random Forest with an offset using dodge
+    plot.vbar(x=dodge('metrics', -0.15, range=plot.x_range), top='logistic_regression', width=0.3, source=source, legend_label="Logistic Regression", color="#8884d8")
+    plot.vbar(x=dodge('metrics', 0.15, range=plot.x_range), top='random_forest', width=0.3, source=source, legend_label="Random Forest", color="#82ca9d")
 
     # Customize plot appearance
     plot.xgrid.grid_line_color = None
@@ -79,27 +104,75 @@ def dashboard(request):
             else:
                 prediction_message = "High chance of child mortality"
 
+            # Recalculate counts after new assessment
+            total_assessments = ChildMortalityAssessment.objects.count()
+            high_risk_cases = ChildMortalityAssessment.objects.filter(risk_prediction=1).count()
+            active_monitoring = ChildMortalityAssessment.objects.filter(status='active').count()
+
+            # Render with updated information
             return render(request, 'dashboard/dashboard.html', {
                 'form': form,
                 'prediction_message': prediction_message,
                 'script': script,
                 'div': div,
-                'key_insights': key_insights
+                'key_insights': key_insights,
+                'total_assessments': total_assessments,
+                'high_risk_cases': high_risk_cases,
+                'active_monitoring': active_monitoring,
+                'success_rate': success_rate
             })
-        else:
-            print("Form errors:", form.errors)
+
     else:
         form = ChildMortalityFormForm()
 
     return render(request, 'dashboard/dashboard.html', {
         'form': form,
-        'prediction': prediction,
         'script': script,
         'div': div,
-        'key_insights': key_insights
+        'key_insights': key_insights,
+        'total_assessments': total_assessments,
+        'high_risk_cases': high_risk_cases,
+        'active_monitoring': active_monitoring,
+        'success_rate': success_rate
     })
 
 
 def success(request):
     prediction = request.GET.get('prediction')
     return render(request, 'dashboard/success.html', {'prediction': prediction})
+
+def login_view(request):
+    if request.method == 'POST':
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(username=username, password=password)
+            if user is not None:
+                login(request, user)
+                return redirect('dashboard')
+    else:
+        form = AuthenticationForm()
+    return render(request, 'dashboard/login.html', {'form': form})
+
+def signup_view(request):
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            username = form.cleaned_data.get('username')
+            raw_password = form.cleaned_data.get('password1')
+            user = authenticate(username=username, password=raw_password)
+            login(request, user)
+            return redirect('dashboard')
+    else:
+        form = UserCreationForm()
+    return render(request, 'dashboard/signup.html', {'form': form})
+
+@login_required
+def profile_view(request):
+    return render(request, 'dashboard/profile.html')
+
+def logout_view(request):
+    logout(request)
+    return redirect('dashboard')

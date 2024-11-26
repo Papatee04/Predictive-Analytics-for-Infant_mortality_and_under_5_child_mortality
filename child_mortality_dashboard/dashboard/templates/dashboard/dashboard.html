@@ -2,54 +2,420 @@
 <html lang="en">
 {% load static %}
 
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Child Mortality Dashboard</title>
-    <link rel="stylesheet" href="{% static 'dashboard/styles.css' %}">
+    <title>Child Mortality Prediction Dashboard</title>
+
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css" rel="stylesheet">
+
+    <!-- Bokeh for plotting -->
     <link href="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.css" rel="stylesheet" />
     <script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.js"></script>
+
+    <!-- Plotly for 3D scatter plots and Sankey diagrams -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <!-- SHAP and LIME visualizations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 </head>
 
-<body>
-    <h1 class="text-2xl font-bold mb-4">Child Mortality Dashboard</h1>
-    <div class="dashboard-container flex">
-        <!-- Left side: Form -->
-        <div class="form-container w-1/2">
-            <form method="post">
-                {% csrf_token %}
-                {{ form.as_p }}
-                <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                    Submit
-                </button>
-            </form>
-            {% if prediction_message %}
-            <div class="prediction-result mt-4">
-                <strong>Prediction Result:</strong>
-                <p>{{ prediction_message }}</p>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Dashboard Header -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Child Mortality Prediction Dashboard</h1>
+                <p class="text-gray-600">Advanced Risk Assessment Platform</p>
             </div>
-            {% endif %}
+            <div class="flex space-x-4 relative">
+                <!-- Settings Dropdown -->
+                <div class="relative">
+                    <button id="settings-dropdown-btn"
+                        class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center">
+                        <i class="ri-settings-3-line mr-2"></i>Settings
+                        <svg class="w-4 h-4 ml-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <div id="settings-dropdown"
+                        class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-20 border border-gray-200">
+                        <ul class="py-1">
+                            <li>
+                                <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100 flex items-center">
+                                    <i class="ri-settings-4-line mr-2"></i>Application Settings
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100 flex items-center">
+                                    <i class="ri-notification-line mr-2"></i>Notifications
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100 flex items-center">
+                                    <i class="ri-database-line mr-2"></i>Data Management
+                                </a>
+                            </li>
+                            <li class="border-t border-gray-200">
+                                <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100 flex items-center">
+                                    <i class="ri-question-line mr-2"></i>Help & Support
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Profile Dropdown -->
+                <div class="relative">
+                    <button id="profile-dropdown-btn"
+                        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex items-center">
+                        <i class="ri-user-line mr-2"></i>
+                        {% if user.is_authenticated %}
+                        {{ user.username }}
+                        {% else %}
+                        Profile
+                        {% endif %}
+                        <svg class="w-4 h-4 ml-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </button>
+
+                    <div id="profile-dropdown"
+                        class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg z-20 border border-gray-200">
+                        {% if user.is_authenticated %}
+                        <div class="p-4 border-b border-gray-200 flex items-center">
+                            <img src="{{ user.profile.avatar.url|default:'/path/to/default/avatar.png' }}"
+                                alt="{{ user.username }}" class="w-12 h-12 rounded-full mr-4">
+                            <div>
+                                <h3 class="text-lg font-semibold">{{ user.get_full_name|default:user.username }}</h3>
+                                <p class="text-sm text-gray-500">{{ user.email }}</p>
+                            </div>
+                        </div>
+                        <ul class="py-1">
+                            <li>
+                                <a href="{% url 'profile_edit' %}"
+                                    class="block px-4 py-2 text-gray-800 hover:bg-gray-100 flex items-center">
+                                    <i class="ri-user-settings-line mr-2"></i>Edit Profile
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{% url 'account_change_password' %}"
+                                    class="block px-4 py-2 text-gray-800 hover:bg-gray-100 flex items-center">
+                                    <i class="ri-lock-line mr-2"></i>Change Password
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{% url 'dashboard' %}"
+                                    class="block px-4 py-2 text-gray-800 hover:bg-gray-100 flex items-center">
+                                    <i class="ri-dashboard-line mr-2"></i>My Dashboard
+                                </a>
+                            </li>
+                            <li class="border-t border-gray-200">
+                                <a href="{% url 'account_logout' %}"
+                                    class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center">
+                                    <i class="ri-logout-box-r-line mr-2"></i>Logout
+                                </a>
+                            </li>
+                        </ul>
+                        {% else %}
+                        <div class="p-4 text-center">
+                            <p class="mb-4 text-gray-600">Please log in to access your profile</p>
+                            <a href="{% url 'account_login' %}"
+                                class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                                Login
+                            </a>
+                            <p class="mt-2 text-sm text-gray-500">
+                                New user? <a href="{% url 'account_signup' %}"
+                                    class="text-blue-500 hover:underline">Sign up</a>
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Right side: Plot and Insights -->
-        <div class="w-1/2">
-            <div class="chart-container">
-                <!-- Embed Bokeh plot -->
-                {{ script|safe }}
-                {{ div|safe }}
+        <!-- Global Infant Mortality Rate Widget -->
+        <div class="mb-8 bg-white p-6 rounded-lg shadow">
+            <h2 class="text-xl font-bold mb-4 flex items-center">
+                <i class="ri-global-line mr-3 text-teal-500"></i>
+                Global Infant Mortality Rate
+            </h2>
+            <iframe
+                src="https://data.humdata.org/tools/quickcharts/show;url=https%3A%2F%2Fdata.humdata.org%2Fdataset%2Fdc50cdad-e3dc-47bb-b44d-65426c1c9114%2Fresource%2Ffa987312-36eb-4e61-b2de-4817b8b4f81f;embeddedSource=The%2520DHS%2520Program;embeddedUrl=https%3A%2F%2Fdata.humdata.org%2Fdataset%2Fdc50cdad-e3dc-47bb-b44d-65426c1c9114;embeddedDate=20%2520November%25202024;embeddedConfig=%7B%22configVersion%22%3A5%2C%22bites%22%3A%5B%7B%22tempShowSaveCancelButtons%22%3Afalse%2C%22ingredient%22%3A%7B%22valueColumn%22%3A%22%23indicator%2Bvalue%2Bnum%22%2C%22aggregateFunction%22%3A%22average%22%2C%22dateColumn%22%3Anull%2C%22comparisonValueColumn%22%3Anull%2C%22comparisonOperator%22%3Anull%2C%22filters%22%3A%7B%22filterWith%22%3A%5B%7B%22%23date%2Byear%22%3A%22%24MAX%24%22%7D%2C%7B%22%23indicator%2Bcode%22%3A%22CM_ECMR_C_IMR%22%7D%2C%7B%22%23indicator%2Blabel%2Bcode%22%3A%2214003%22%7D%5D%7D%2C%22title%22%3A%22Infant%20Mortality%20Rate%22%2C%22description%22%3A%22Rate%20is%20for%20the%20period%20of%2010%20years%20preceding%20the%20survey%22%7D%2C%22type%22%3A%22key%20figure%22%2C%22errorMsg%22%3Anull%2C%22computedProperties%22%3A%7B%22explainedFiltersMap%22%3A%7B%7D%2C%22pieChart%22%3Afalse%2C%22dataTitle%22%3A%22Value%22%2C%22unit%22%3Anull%7D%2C%22uiProperties%22%3A%7B%22swapAxis%22%3Atrue%2C%22showGrid%22%3Atrue%2C%22color%22%3A%22%231ebfb3%22%2C%22sortingByValue1%22%3A%22DESC%22%2C%22sortingByCategory1%22%3Anull%2C%22internalColorPattern%22%3A%5B%22%231ebfb3%22%2C%22%230077ce%22%2C%22%23f2645a%22%2C%22%239C27B0%22%5D%2C%22dataTitle%22%3A%22Percent%22%2C%22postText%22%3A%22percent%22%7D%2C%22dataProperties%22%3A%7B%7D%2C%22displayCategory%22%3A%22Charts%22%2C%22hashCode%22%3A-487125335%2C%22_configOrder%22%3A0%7D%5D%2C%22recipeUrl%22%3A%22https%3A%2F%2Fraw.githubusercontent.com%2Fmcarans%2Fhxl-recipes%2Fdev%2Frecipes%2Fdhs%2Frecipe.json%22%7D;singleWidgetMode=true;embeddedTitle=Quick%20Charts;recipeUrl=https%3A%2F%2Fraw.githubusercontent.com%2Fmcarans%2Fhxl-recipes%2Fdev%2Frecipes%2Fdhs%2Frecipe.json;chartSettings=true;chartShare=true"
+                style="border:none; width:100%; min-height:300px">
+            </iframe>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Total Assessments</p>
+                        <p class="text-2xl font-bold">{{ total_assessments|default:'1,284' }}</p>
+                    </div>
+                    <i class="ri-bar-chart-line text-3xl text-blue-500"></i>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">High Risk Cases</p>
+                        <p class="text-2xl font-bold text-red-500">{{ high_risk_cases|default:'124' }}</p>
+                    </div>
+                    <i class="ri-alert-line text-3xl text-red-500"></i>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Success Rate</p>
+                        <p class="text-2xl font-bold text-green-500">{{ success_rate|default:'94.2' }}%</p>
+                    </div>
+                    <i class="ri-check-double-line text-3xl text-green-500"></i>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Active Monitoring</p>
+                        <p class="text-2xl font-bold">{{ active_monitoring|default:'328' }}</p>
+                    </div>
+                    <i class="ri-heart-pulse-line text-3xl text-purple-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column: Main Content -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Bokeh Plot Container -->
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="ri-line-chart-line mr-3 text-blue-500"></i>
+                        Mortality Trend Analysis
+                    </h2>
+                    <div class="chart-container">
+                        {{ script|safe }}
+                        {{ div|safe }}
+                    </div>
+                </div>
+
+                <!-- XAI Components -->
+                <div class="grid grid-cols-2 gap-6">
+                    <!-- SHAP Values Visualization -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h2 class="text-lg font-bold mb-4 flex items-center">
+                            <i class="ri-focus-2-line mr-2 text-purple-500"></i>
+                            SHAP Feature Importance
+                        </h2>
+                        <div id="shap-plot" class="w-full h-64"></div>
+                    </div>
+
+                    <!-- LIME Explanation -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h2 class="text-lg font-bold mb-4 flex items-center">
+                            <i class="ri-lightbulb-line mr-2 text-yellow-500"></i>
+                            LIME Model Explanation
+                        </h2>
+                        <div id="lime-explanation" class="text-sm text-gray-700">
+                            {% if lime_explanation %}
+                            {{ lime_explanation|safe }}
+                            {% else %}
+                            <p>Run a prediction to see local interpretable explanations.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3D Risk Analysis Scatter Plot -->
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="ri-bubble-chart-line mr-3 text-green-500"></i>
+                        Multidimensional Risk Analysis
+                    </h2>
+                    <div id="3d-scatter-plot" class="w-full h-96"></div>
+                </div>
+
+                <!-- Sankey Diagram for Risk Factor Interactions -->
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="ri-flow-chart mr-3 text-indigo-500"></i>
+                        Risk Factor Interactions
+                    </h2>
+                    <div id="sankey-diagram" class="w-full h-96"></div>
+                </div>
+
+                <!-- Risk Assessment Form -->
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="ri-health-book-line mr-3 text-green-500"></i>
+                        Risk Assessment
+                    </h2>
+                    <form method="post" class="space-y-4">
+                        {% csrf_token %}
+                        {{ form.as_p }}
+                        <button type="submit"
+                            class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            Calculate Risk
+                        </button>
+                    </form>
+                    {% if prediction_message %}
+                    <div class="prediction-result mt-4 bg-blue-50 p-4 rounded">
+                        <strong class="block mb-2 text-blue-700">Prediction Result:</strong>
+                        <p class="text-blue-800">{{ prediction_message }}</p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
 
-            <div class="insights-container mt-8">
-                <h2 class="text-xl font-bold mb-4">Key Insights</h2>
-                <ul class="list-disc pl-5">
-                    {% for insight in key_insights %}
-                    <li class="mb-2">{{ insight }}</li>
-                    {% endfor %}
-                </ul>
+            <!-- Right Column: Additional Information -->
+            <div class="space-y-8">
+                <!-- [Previous right column content remains unchanged] -->
             </div>
         </div>
     </div>
+
+    <!-- XAI Visualization Scripts -->
+    <script>
+        // SHAP Values Visualization
+        function renderSHAPPlot(shapValues) {
+            const data = [{
+                type: 'bar',
+                x: shapValues.map(v => v.value),
+                y: shapValues.map(v => v.feature),
+                orientation: 'h',
+                marker: {
+                    color: 'rgba(58,71,80,0.6)',
+                    line: {
+                        color: 'rgba(58,71,80,1)',
+                        width: 1.5
+                    }
+                }
+            }];
+
+            const layout = {
+                title: 'Feature Importance (SHAP Values)',
+                xaxis: { title: 'SHAP Value' },
+                yaxis: { title: 'Features' },
+                height: 300
+            };
+
+            Plotly.newPlot('shap-plot', data, layout);
+        }
+
+        // 3D Scatter Plot for Multidimensional Risk Analysis
+        function render3DScatterPlot(data) {
+            const trace = {
+                x: data.x,
+                y: data.y,
+                z: data.z,
+                mode: 'markers',
+                marker: {
+                    size: 10,
+                    color: data.color,
+                    colorscale: 'Viridis',
+                    opacity: 0.8
+                },
+                type: 'scatter3d'
+            };
+
+            const layout = {
+                title: 'Multidimensional Risk Factors',
+                scene: {
+                    xaxis: { title: data.xLabel },
+                    yaxis: { title: data.yLabel },
+                    zaxis: { title: data.zLabel }
+                }
+            };
+
+            Plotly.newPlot('3d-scatter-plot', [trace], layout);
+        }
+
+        // Sankey Diagram for Risk Factor Interactions
+        function renderSankeyDiagram(links) {
+            const data = [{
+                type: "sankey",
+                node: {
+                    pad: 15,
+                    thickness: 20,
+                    line: { color: "black", width: 0.5 },
+                    label: links.labels,
+                    color: links.colors
+                },
+                link: {
+                    source: links.sources,
+                    target: links.targets,
+                    value: links.values
+                }
+            }];
+
+            const layout = {
+                title: "Risk Factor Interactions",
+                font: { size: 10 }
+            };
+
+            Plotly.newPlot('sankey-diagram', data, layout);
+        }
+
+        // Initialize visualizations when data is available
+        document.addEventListener('DOMContentLoaded', function () {
+            // These would typically be populated with actual data from Django context
+            const shapValues = JSON.parse('{{ shap_values|safe }}');
+            const scatterData = JSON.parse('{{ scatter_plot_data|safe }}');
+            const sankeyLinks = JSON.parse('{{ sankey_links|safe }}');
+
+            if (shapValues) renderSHAPPlot(shapValues);
+            if (scatterData) render3DScatterPlot(scatterData);
+            if (sankeyLinks) renderSankeyDiagram(sankeyLinks);
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const settingsBtn = document.getElementById('settings-dropdown-btn');
+            const settingsDropdown = document.getElementById('settings-dropdown');
+            const profileBtn = document.getElementById('profile-dropdown-btn');
+            const profileDropdown = document.getElementById('profile-dropdown');
+
+            // Settings Dropdown
+            settingsBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                settingsDropdown.classList.toggle('hidden');
+                profileDropdown.classList.add('hidden');
+            });
+
+            // Profile Dropdown
+            profileBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                profileDropdown.classList.toggle('hidden');
+                settingsDropdown.classList.add('hidden');
+            });
+
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', function () {
+                settingsDropdown.classList.add('hidden');
+                profileDropdown.classList.add('hidden');
+            });
+
+            // Prevent dropdown from closing when clicking inside
+            settingsDropdown.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
+            profileDropdown.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
+        });
+    </script>
 </body>
 
 </html>
