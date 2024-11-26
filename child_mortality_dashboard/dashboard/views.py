@@ -14,6 +14,10 @@ import lime
 import lime.lime_tabular
 import json
 import html
+import plotly.graph_objs as go
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+import pandas as pd
 
 # Load the pre-trained model
 model = joblib.load(
@@ -93,6 +97,73 @@ def generate_lime_explanation(model, feature_names, X_input):
     
     return explanation_html
 
+def create_3d_risk_scatter_plot(data):
+    """
+    Create a 3D scatter plot for multidimensional risk analysis
+    
+    Parameters:
+    - data: DataFrame containing risk assessment features
+    
+    Returns:
+    - Plotly figure object for 3D scatter plot
+    """
+    # Ensure you have the necessary columns
+    required_columns = [
+        'number_of_children', 
+        'age_at_first_sex', 
+        'total_children_ever_born',
+        'risk_prediction'
+    ]
+    
+    # Select relevant features for visualization
+    X = data[required_columns[:-1]]
+    y = data['risk_prediction']
+    
+    # Standardize features
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    # Optional: Use PCA for dimensionality reduction if needed
+    pca = PCA(n_components=3)
+    X_pca = pca.fit_transform(X_scaled)
+    
+    # Create color mapping for risk levels
+    colors = ['red' if pred == 0 else 'green' for pred in y]
+    
+    # Create 3D scatter plot
+    trace = go.Scatter3d(
+        x=X_pca[:, 0],
+        y=X_pca[:, 1],
+        z=X_pca[:, 2],
+        mode='markers',
+        marker=dict(
+            size=5,
+            color=colors,
+            opacity=0.7,
+            colorscale='Viridis'
+        ),
+        text=[f"Risk Level: {'High' if pred == 0 else 'Low'}" for pred in y],
+        hoverinfo='text'
+    )
+    
+    layout = go.Layout(
+        scene=dict(
+            xaxis_title='First Principal Component',
+            yaxis_title='Second Principal Component',
+            zaxis_title='Third Principal Component',
+            aspectmode='cube'
+        ),
+        title='Multidimensional Risk Analysis Scatter Plot',
+        hovermode='closest'
+    )
+    
+    fig = go.Figure(data=[trace], layout=layout)
+    
+    # Convert to JSON for frontend rendering
+    plot_json = fig.to_json()
+    
+    return plot_json
+
 def dashboard(request):
     # Get actual counts from the database
     total_assessments = ChildMortalityAssessment.objects.count()
@@ -107,6 +178,12 @@ def dashboard(request):
     ).count()
     
     success_rate = (successful_interventions / total_high_risk * 100) if total_high_risk > 0 else 0
+
+    all_assessments = ChildMortalityAssessment.objects.all()
+    assessments_df = pd.DataFrame.from_records(all_assessments.values())
+    
+    # Generate 3D scatter plot
+    risk_scatter_plot = create_3d_risk_scatter_plot(assessments_df)
 
     # Model data for visualization
     model_data = [
