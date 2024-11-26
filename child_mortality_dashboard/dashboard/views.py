@@ -18,6 +18,11 @@ import plotly.graph_objs as go
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import pandas as pd
+import io
+import base64
+import shap
+import numpy as np
+import matplotlib.pyplot as plt
 
 # Load the pre-trained model
 model = joblib.load(
@@ -102,33 +107,81 @@ def create_3d_risk_scatter_plot(data):
     Create a 3D scatter plot for multidimensional risk analysis
     
     Parameters:
-    - data: DataFrame containing risk assessment features
+    - data: Django QuerySet of ChildMortalityAssessment or DataFrame
     
     Returns:
-    - Plotly figure object for 3D scatter plot
+    - Plotly figure JSON for 3D scatter plot
     """
-    # Ensure you have the necessary columns
-    required_columns = [
-        'number_of_children', 
-        'age_at_first_sex', 
-        'total_children_ever_born',
-        'risk_prediction'
-    ]
+    # If input is a DataFrame, process directly
+    if isinstance(data, pd.DataFrame):
+        assessment_data = data
+    else:
+        # Convert QuerySet to DataFrame
+        assessment_data = pd.DataFrame(list(data.values()))
     
-    # Select relevant features for visualization
-    X = data[required_columns[:-1]]
-    y = data['risk_prediction']
+    # Required columns for the plot
+    required_columns = ['number_of_children', 'age_at_first_sex', 'total_children_ever_born', 'risk_prediction']
+    
+    # Check if the required columns exist in the DataFrame
+    missing_columns = [col for col in required_columns if col not in assessment_data.columns]
+    
+    if missing_columns:
+        # If columns are missing, try to retrieve data from related form_data
+        try:
+            # Fetch related ChildMortalityForm data
+            form_data = ChildMortalityForm.objects.all().values(
+                'number_of_children', 
+                'age_at_first_sex', 
+                'total_children_ever_born'
+            )
+            form_df = pd.DataFrame(list(form_data))
+            
+            # Merge form data with assessment data
+            assessment_data = pd.merge(
+                assessment_data, 
+                form_df, 
+                left_index=True, 
+                right_index=True
+            )
+        except Exception as e:
+            # If merging fails, return an empty plot
+            print(f"Could not retrieve additional data: {e}")
+            return go.Figure().to_json()
+    
+    # Validate column existence after potential merge
+    missing_columns = [col for col in required_columns if col not in assessment_data.columns]
+    if missing_columns:
+        print(f"Missing columns: {missing_columns}")
+        return go.Figure().to_json()
+    
+    # Prepare data for PCA
+    X = assessment_data[['number_of_children', 'age_at_first_sex', 'total_children_ever_born']]
+    y = assessment_data['risk_prediction']
+    
+    # Convert categorical columns to numeric if needed
+    # This is necessary if the values are stored as strings or categorical
+    for col in X.columns:
+        if X[col].dtype == 'object':
+            X[col] = pd.to_numeric(X[col], errors='coerce')
+    
+    # Drop rows with NaN values
+    X_clean = X.dropna()
+    y_clean = y[X_clean.index]
+    
+    # Check if we have enough data
+    if len(X_clean) < 2:
+        return go.Figure().to_json()
     
     # Standardize features
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    X_scaled = scaler.fit_transform(X_clean)
     
-    # Optional: Use PCA for dimensionality reduction if needed
+    # Use PCA for dimensionality reduction
     pca = PCA(n_components=3)
     X_pca = pca.fit_transform(X_scaled)
     
     # Create color mapping for risk levels
-    colors = ['red' if pred == 0 else 'green' for pred in y]
+    colors = ['red' if pred == 0 else 'green' for pred in y_clean]
     
     # Create 3D scatter plot
     trace = go.Scatter3d(
@@ -142,15 +195,18 @@ def create_3d_risk_scatter_plot(data):
             opacity=0.7,
             colorscale='Viridis'
         ),
-        text=[f"Risk Level: {'High' if pred == 0 else 'Low'}" for pred in y],
+        text=[f"Risk Level: {'High' if pred == 0 else 'Low'}" for pred in y_clean],
         hoverinfo='text'
     )
     
+    # Variance explained by each component
+    variance_explained = pca.explained_variance_ratio_
+    
     layout = go.Layout(
         scene=dict(
-            xaxis_title='First Principal Component',
-            yaxis_title='Second Principal Component',
-            zaxis_title='Third Principal Component',
+            xaxis_title=f'PC1 ({variance_explained[0]*100:.2f}%)',
+            yaxis_title=f'PC2 ({variance_explained[1]*100:.2f}%)',
+            zaxis_title=f'PC3 ({variance_explained[2]*100:.2f}%)',
             aspectmode='cube'
         ),
         title='Multidimensional Risk Analysis Scatter Plot',
@@ -160,9 +216,82 @@ def create_3d_risk_scatter_plot(data):
     fig = go.Figure(data=[trace], layout=layout)
     
     # Convert to JSON for frontend rendering
-    plot_json = fig.to_json()
+    return fig.to_json()
+
+def generate_shap_explanation(model, X_train, X_input):
+    """
+    Generate SHAP explanation for a single prediction
     
-    return plot_json
+    Parameters:
+    - model: Trained machine learning model
+    - X_train: Training dataset used for background distribution
+    - X_input: Input features for a single prediction
+    
+    Returns:
+    - SHAP explanation plot as base64 encoded image
+    - SHAP values summary
+    """
+    # Use kernel explainer for model-agnostic explanation
+    explainer = shap.KernelExplainer(model.predict_proba, X_train)
+    
+    # Reshape input to match model's expected input
+    X_input = np.array(X_input).reshape(1, -1)
+    
+    # Calculate SHAP values
+    shap_values = explainer.shap_values(X_input)
+    
+    # Create a summary plot
+    plt.figure(figsize=(10, 6))
+    shap.summary_plot(
+        shap_values, 
+        X_input, 
+        feature_names=[
+            'Cause of Fistula',
+            'Number of Children',
+            'Current Pregnancy',
+            'Living Children',
+            'Marital Status',
+            'Birth History Entries',
+            'Total Children Born',
+            'Age at First Sex',
+            'Ever Been Married'
+        ], 
+        plot_type='bar',
+        show=False
+    )
+    
+    # Save plot to a bytes buffer
+    buf = io.BytesIO()
+    plt.tight_layout()
+    plt.savefig(buf, format='png', bbox_inches='tight')
+    plt.close()
+    
+    # Encode the image to base64
+    image_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+    
+    # Prepare SHAP value summary
+    shap_summary = []
+    for name, value in zip([
+        'Cause of Fistula',
+        'Number of Children',
+        'Current Pregnancy',
+        'Living Children',
+        'Marital Status',
+        'Birth History Entries',
+        'Total Children Born',
+        'Age at First Sex',
+        'Ever Been Married'
+    ], shap_values[0]):
+        shap_summary.append({
+            'feature': name,
+            'shap_value': float(value),
+            'impact': 'positive' if value > 0 else 'negative'
+        })
+    
+    # Sort by absolute SHAP value
+    shap_summary = sorted(shap_summary, key=lambda x: abs(x['shap_value']), reverse=True)
+    
+    return image_base64, shap_summary
 
 def dashboard(request):
     # Get actual counts from the database
@@ -300,7 +429,8 @@ def dashboard(request):
                 'high_risk_cases': high_risk_cases,
                 'active_monitoring': active_monitoring,
                 'success_rate': success_rate,
-                'lime_explanation': lime_explanation
+                'lime_explanation': lime_explanation,
+                '3d_risk_scatter_plot': risk_scatter_plot
             })
 
     else:
@@ -315,7 +445,8 @@ def dashboard(request):
         'high_risk_cases': high_risk_cases,
         'active_monitoring': active_monitoring,
         'success_rate': success_rate,
-        'lime_explanation': None
+        'lime_explanation': None,
+        '3d_risk_scatter_plot': risk_scatter_plot
     })
 
 
