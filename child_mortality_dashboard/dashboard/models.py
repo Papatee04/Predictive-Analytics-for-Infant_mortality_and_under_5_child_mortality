@@ -77,7 +77,7 @@ class ChildMortalityForm(models.Model):
     
 class ChildMortalityAssessment(models.Model):
     # Link to the form that was used for prediction
-    form_data = models.ForeignKey('ChildMortalityForm', on_delete=models.CASCADE)
+    form_data = models.ForeignKey('ChildMortalityForm', on_delete=models.CASCADE, null=True, blank=True)
     
     # User who made the assessment
     user = models.ForeignKey(User, on_delete=models.CASCADE)

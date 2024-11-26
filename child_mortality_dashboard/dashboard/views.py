@@ -98,6 +98,16 @@ def dashboard(request):
 
             prediction = model.predict([X_input])[0]
 
+            # Create a new ChildMortalityAssessment object
+            new_assessment = ChildMortalityAssessment.objects.create(
+                form_data=None,  # Temporarily bypass the requirement
+                user=request.user, 
+                risk_prediction=prediction,
+                status='active',  # Set initial status
+                intervention_outcome='pending'  # Set initial intervention outcome
+                # You might want to add more fields from the form data
+            )
+
             # Map prediction result to user-friendly message
             if prediction == 1:
                 prediction_message = "Low chance of child mortality"
