@@ -9,10 +9,85 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.decorators import login_required
 from dashboard.models import *
+import numpy as np
+import lime
+import lime.lime_tabular
+import json
+import html
 
 # Load the pre-trained model
 model = joblib.load(
     'C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/random_forest_model.pkl')
+
+def generate_lime_explanation(model, feature_names, X_input):
+    """
+    Generate LIME explanation for a single prediction
+    
+    Parameters:
+    - model: Trained machine learning model
+    - feature_names: List of feature names used in the model
+    - X_input: Input features for a single prediction
+    
+    Returns:
+    - HTML-formatted LIME explanation
+    """
+    # Load the training data to help LIME understand feature distributions
+    # Assuming you have a training dataset saved
+    X_train = joblib.load('path/to/X_train.pkl')
+    
+    # Create a LIME explainer
+    explainer = lime.lime_tabular.LimeTabularExplainer(
+        X_train,
+        feature_names=feature_names,
+        class_names=['High Mortality Risk', 'Low Mortality Risk'],
+        verbose=True,
+        mode='classification'
+    )
+    
+    # Generate explanation
+    explanation = explainer.explain_instance(
+        X_input, 
+        model.predict_proba, 
+        num_features=10,  # Number of top features to explain
+        top_labels=1
+    )
+    
+    # Convert explanation to HTML
+    explanation_html = "<h3>Feature Importance for Prediction</h3>"
+    explanation_html += "<table class='w-full border-collapse'>"
+    explanation_html += "<tr><th class='border p-2'>Feature</th><th class='border p-2'>Impact</th></tr>"
+    
+    for feature, impact in explanation.as_list(label=explanation.top_labels[0]):
+        # Escape HTML to prevent XSS
+        safe_feature = html.escape(feature)
+        
+        # Color-code impact (green for positive, red for negative)
+        color_class = "text-green-600" if impact > 0 else "text-red-600"
+        explanation_html += (
+            f"<tr>"
+            f"<td class='border p-2'>{safe_feature}</td>"
+            f"<td class='border p-2 {color_class}'>{impact:.4f}</td>"
+            f"</tr>"
+        )
+    
+    explanation_html += "</table>"
+    
+    # Add probability and prediction information
+    proba = model.predict_proba([X_input])[0]
+    prediction = model.predict([X_input])[0]
+    
+    prediction_text = "Low Mortality Risk" if prediction == 1 else "High Mortality Risk"
+    prediction_color = "text-green-600" if prediction == 1 else "text-red-600"
+    
+    explanation_html += (
+        f"<div class='mt-4'>"
+        f"<p>Prediction: <span class='{prediction_color} font-bold'>{prediction_text}</span></p>"
+        f"<p>Probability of Low Risk: {proba[1]:.2%}</p>"
+        f"<p>Probability of High Risk: {proba[0]:.2%}</p>"
+        f"</div>"
+    )
+    
+    return explanation_html
 
 def dashboard(request):
     # Get actual counts from the database
