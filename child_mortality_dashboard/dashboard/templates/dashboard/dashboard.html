@@ -7,6 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Child Mortality Prediction Dashboard</title>
 
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -23,12 +25,11 @@
     <!-- SHAP and LIME visualizations -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-
     <!-- Custom JS Scripts -->
     <script src="{% static 'dashboard/js/Xai_scripts.js' %}"></script>
     <script src="{% static 'dashboard/js/3d_scatter.js' %}"></script>
     <script src="{% static 'dashboard/js/dropdown.js' %}"></script>
+    <script src="{% static 'dashboard/js/sanky.js' %}"></script>
 </head>
 
 <body class="bg-gray-50">
@@ -241,15 +242,6 @@
                     Multidimensional Risk Analysis
                 </h2>
                 <div id="3d-scatter-plot" class="w-full h-96"></div>
-            </div>
-
-            <!-- Sankey Diagram for Risk Factor Interactions -->
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-bold mb-4 flex items-center">
-                    <i class="ri-flow-chart mr-3 text-indigo-500"></i>
-                    Risk Factor Interactions
-                </h2>
-                <div id="sankey-diagram" class="w-full h-96"></div>
             </div>
 
             <!-- Risk Assessment Form -->

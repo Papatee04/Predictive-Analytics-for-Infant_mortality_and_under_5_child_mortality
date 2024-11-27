@@ -217,7 +217,6 @@ def create_3d_risk_scatter_plot(data):
     # Convert to JSON for frontend rendering
     return fig.to_json()
 
-
 def dashboard(request):
     # Initialize these variables at the beginning of the function
     shap_plot_base64 = None
@@ -359,8 +358,6 @@ def dashboard(request):
                 'success_rate': success_rate,
                 'lime_explanation': lime_explanation,
                 '3d_risk_scatter_plot': risk_scatter_plot,
-                'shap_plot_base64': shap_plot_base64,
-                'shap_summary': shap_summary
             })
 
     else:
@@ -377,8 +374,6 @@ def dashboard(request):
         'success_rate': success_rate,
         'lime_explanation': None,
         '3d_risk_scatter_plot': risk_scatter_plot,
-        'shap_plot_base64': shap_plot_base64,
-        'shap_summary': shap_summary
     })
 
 
