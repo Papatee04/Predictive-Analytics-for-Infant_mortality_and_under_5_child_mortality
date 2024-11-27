@@ -75,10 +75,7 @@ class ChildMortalityForm(models.Model):
     def __str__(self):
         return f"Form Response by {self.id}"
     
-class ChildMortalityAssessment(models.Model):
-    # Link to the form that was used for prediction
-    form_data = models.ForeignKey('ChildMortalityForm', on_delete=models.CASCADE, null=True, blank=True)
-    
+class ChildMortalityAssessment(models.Model): 
     # User who made the assessment
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     

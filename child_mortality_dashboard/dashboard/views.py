@@ -1,10 +1,9 @@
 import joblib
 from django.shortcuts import render, redirect
-from .forms import ChildMortalityFormForm
 from bokeh.plotting import figure
 from bokeh.embed import components
 from bokeh.transform import dodge
-from bokeh.models import ColumnDataSource
+from bokeh.models import ColumnDataSource, HoverTool
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.decorators import login_required
@@ -22,10 +21,14 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from dashboard.forms import *
+import io
+import base64
 
-# Load the pre-trained model
-model = joblib.load(
-    'C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/random_forest_model.pkl')
+
+# Load pre-trained models
+u5mr_model = joblib.load('C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/rf_classifier_balanced_u5mr.pkl')
+imr_model = joblib.load('C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/rf_classifier_balanced_imr.pkl')
 
 def generate_lime_explanation(model, feature_names, X_input):
     """
@@ -218,15 +221,12 @@ def create_3d_risk_scatter_plot(data):
     return fig.to_json()
 
 def dashboard(request):
-    # Initialize these variables at the beginning of the function
-    shap_plot_base64 = None
-    shap_summary = None
-    # Get actual counts from the database
+    # Database statistics
     total_assessments = ChildMortalityAssessment.objects.count()
     high_risk_cases = ChildMortalityAssessment.objects.filter(risk_prediction=1).count()
     active_monitoring = ChildMortalityAssessment.objects.filter(status='active').count()
     
-    # Calculate success rate (as in the previous version)
+    # Calculate success rate
     total_high_risk = ChildMortalityAssessment.objects.filter(risk_prediction=1).count()
     successful_interventions = ChildMortalityAssessment.objects.filter(
         risk_prediction=1, 
@@ -235,146 +235,306 @@ def dashboard(request):
     
     success_rate = (successful_interventions / total_high_risk * 100) if total_high_risk > 0 else 0
 
-    all_assessments = ChildMortalityAssessment.objects.all()
-    assessments_df = pd.DataFrame.from_records(all_assessments.values())
-    
-    # Generate 3D scatter plot
-    risk_scatter_plot = create_3d_risk_scatter_plot(assessments_df)
+    # Feature importance data (example, replace with actual data)
+    feature_importance_data = {
+        'Feature': ['b12', 'v101', 'v113', 'socioeconomic_index', 'm70', 
+                    'v106', 'wealth_residence_interaction', 'v190', 
+                    'health_access_index', 'v025'],
+        'Importance': [0.45, 0.35, 0.3, 0.2, 0.15, 0.1, 0.08, 0.06, 0.04, 0.02]
+    }
 
-    # Model data for visualization
-    model_data = [
-        {'metric': 'Accuracy', 'Logistic Regression': 0.999269, 'Random Forest': 1},
-        {'metric': 'Precision', 'Logistic Regression': 0.9990234, 'Random Forest': 1},
-        {'metric': 'Recall', 'Logistic Regression': 1, 'Random Forest': 1},
-        {'metric': 'AUC', 'Logistic Regression': 0.9985528, 'Random Forest': 1},
-    ]
+    # Create Bokeh feature importance plot
+    script, div = create_feature_importance_plot(feature_importance_data)
 
-    # Extract data for Bokeh plotting
-    metrics = [d['metric'] for d in model_data]
-    logistic_regression = [d['Logistic Regression'] for d in model_data]
-    random_forest = [d['Random Forest'] for d in model_data]
 
-    # Create a Bokeh figure
-    plot = figure(x_range=metrics, title="Model Comparison",
-                  toolbar_location="above", tools="pan,wheel_zoom,box_zoom,reset")
-
-    # Convert data to ColumnDataSource for interactivity and efficient data handling
-    source = ColumnDataSource(data=dict(
-        metrics=metrics,
-        logistic_regression=logistic_regression,
-        random_forest=random_forest,
-    ))
-
-    # Add bars for Logistic Regression and Random Forest with an offset using dodge
-    plot.vbar(x=dodge('metrics', -0.15, range=plot.x_range), top='logistic_regression', width=0.3, source=source, legend_label="Logistic Regression", color="#8884d8")
-    plot.vbar(x=dodge('metrics', 0.15, range=plot.x_range), top='random_forest', width=0.3, source=source, legend_label="Random Forest", color="#82ca9d")
-
-    # Customize plot appearance
-    plot.xgrid.grid_line_color = None
-    plot.y_range.start = 0
-    plot.legend.title = "Models"
-    plot.legend.label_text_font_size = "10pt"
-
-    # Generate script and div components for embedding
-    script, div = components(plot)
-
-    # Key insights to display
+    # Key insights
     key_insights = [
-        "Maternal health and obstetric care are critical factors in child mortality.",
-        "Family size and resource strain impact child survival rates.",
-        "Marital status and social support affect child mortality risks.",
-        "Maternal education and family planning are associated with lower child mortality.",
+        "Maternal health and socioeconomic factors critically impact child mortality.",
+        "Education and health access significantly influence child survival rates.",
+        "Wealth index and residence type play crucial roles in child health outcomes.",
+        "Postnatal care is a key determinant of infant and child mortality.",
     ]
 
-    if request.method == 'POST':
-        form = ChildMortalityFormForm(request.POST)
-        if form.is_valid():
-            data = form.cleaned_data
-
-            # Define feature names to match your model's input
-            feature_names = [
-                'cause_of_fistula',
-                'number_of_children',
-                'current_pregnancy',
-                'number_of_living_children',
-                'marital_status',
-                'entries_in_birth_history',
-                'total_children_ever_born',
-                'age_at_first_sex',
-                'ever_been_married'
-            ]
-
-            # Prepare input for prediction and LIME
-            X_input = [
-                int(data['cause_of_fistula']),
-                data['number_of_children'],
-                int(data['current_pregnancy']),
-                data['number_of_living_children'],
-                int(data['marital_status']),
-                int(data['entries_in_birth_history']),
-                int(data['total_children_ever_born']),
-                int(data['age_at_first_sex']),
-                int(data['ever_been_married'])
-            ]
-
-            # Make prediction
-            # Use:
-            prediction = model.predict(np.array(X_input).reshape(1, -1))[0]
-
-            # Generate LIME explanation
-            lime_explanation = generate_lime_explanation(model, feature_names, X_input)
-
-            # Create a new ChildMortalityAssessment object
-            new_assessment = ChildMortalityAssessment.objects.create(
-                form_data=None,  # Temporarily bypass the requirement
-                user=request.user, 
-                risk_prediction=prediction,
-                status='active',  # Set initial status
-                intervention_outcome='pending'  # Set initial intervention outcome
-                # You might want to add more fields from the form data
-            )
-
-            # Map prediction result to user-friendly message
-            if prediction == 1:
-                prediction_message = "Low chance of child mortality"
-            else:
-                prediction_message = "High chance of child mortality"
-
-            # Recalculate counts after new assessment
-            total_assessments = ChildMortalityAssessment.objects.count()
-            high_risk_cases = ChildMortalityAssessment.objects.filter(risk_prediction=1).count()
-            active_monitoring = ChildMortalityAssessment.objects.filter(status='active').count()
-
-            # Render with updated information
-            return render(request, 'dashboard/dashboard.html', {
-                'form': form,
-                'prediction_message': prediction_message,
-                'script': script,
-                'div': div,
-                'key_insights': key_insights,
-                'total_assessments': total_assessments,
-                'high_risk_cases': high_risk_cases,
-                'active_monitoring': active_monitoring,
-                'success_rate': success_rate,
-                'lime_explanation': lime_explanation,
-                '3d_risk_scatter_plot': risk_scatter_plot,
-            })
-
-    else:
-        form = ChildMortalityFormForm()
-
-    return render(request, 'dashboard/dashboard.html', {
-        'form': form,
-        'script': script,
-        'div': div,
+    # Initialize context with default values
+    context = {
+        'form': None,
         'key_insights': key_insights,
         'total_assessments': total_assessments,
         'high_risk_cases': high_risk_cases,
         'active_monitoring': active_monitoring,
         'success_rate': success_rate,
-        'lime_explanation': None,
-        '3d_risk_scatter_plot': risk_scatter_plot,
-    })
+        'has_prediction': False,
+        'script': script,
+        'div': div,
+        'lime_explanation': None
+    }
+
+    if request.method == 'POST':
+        form = MortalityPredictionForm(request.POST)
+        context['form'] = form
+
+        if form.is_valid():
+            # Extract form data
+            data = {
+                'v106': form.cleaned_data['education_level'],
+                'v025': form.cleaned_data['residence_type'],
+                'v190': form.cleaned_data['wealth_index'],
+                'v101': form.cleaned_data['region'],
+                'v113': form.cleaned_data['water_source'],
+                'm70': form.cleaned_data['postnatal_check'],
+                'b12': form.cleaned_data.get('succeeding_birth_interval', 0),
+                'socioeconomic_index': calculate_socioeconomic_index(
+                    form.cleaned_data['wealth_index'], 
+                    form.cleaned_data['education_level'], 
+                    form.cleaned_data['residence_type']
+                ),
+                'health_access_index': calculate_health_access_index(
+                    form.cleaned_data['water_source'], 
+                    form.cleaned_data['postnatal_check']
+                ),
+                'wealth_residence_interaction': int(form.cleaned_data['wealth_index']) * int(form.cleaned_data['residence_type'])
+            }
+    
+            # Convert to DataFrame
+            input_data = pd.DataFrame([data])
+
+            # Check which button was pressed
+            calculate_type = request.POST.get('calculate')
+            if calculate_type == 'u5mr':
+                prediction = u5mr_model.predict(input_data)[0]
+                probability = u5mr_model.predict_proba(input_data)[0][1]
+                result_label = "Under-Five Mortality Risk"
+                
+                # Add LIME explanation for U5MR
+                context = add_lime_explanation_to_context(
+                    request, 
+                    context, 
+                    input_data, 
+                    'u5mr'
+                )
+                
+            elif calculate_type == 'imr':
+                prediction = imr_model.predict(input_data)[0]
+                probability = imr_model.predict_proba(input_data)[0][1]
+                result_label = "Infant Mortality Risk"
+                
+                # Add LIME explanation for IMR
+                context = add_lime_explanation_to_context(
+                    request, 
+                    context, 
+                    input_data, 
+                    'imr'
+                )
+
+            # Map prediction to a user-friendly message
+            prediction_label = get_prediction_label(prediction)    
+
+            # Create assessment record
+            assessment = ChildMortalityAssessment.objects.create(
+                user=request.user,
+                risk_prediction=prediction
+            )
+
+            # Update context with prediction details
+            context.update({
+                'assessment': assessment,
+                'prediction': prediction_label,
+                'probability': probability,
+                'result_label': result_label,
+                'has_prediction': True
+            })
+
+            return render(request, 'dashboard/dashboard.html', context)
+    else:
+        context['form'] = MortalityPredictionForm()
+
+    return render(request, 'dashboard/dashboard.html', context)
+
+def generate_lime_explanation(model, input_data, training_data_path, feature_names=None):
+    """
+    Generate a LIME explanation for a given model and input data.
+    
+    Args:
+        model: Trained machine learning model
+        input_data (pd.DataFrame): Single row of input data to explain
+        training_data_path (str): Path to the pickle file with training data
+        feature_names (list, optional): List of feature names 
+    
+    Returns:
+        dict: Containing HTML-formatted explanation and visualization
+    """
+    # Load training data
+    training_data = joblib.load(training_data_path)
+    X_train = training_data['X_train']
+    
+    # If feature names not provided, use columns of input data
+    if feature_names is None:
+        feature_names = input_data.columns.tolist()
+    
+    # Prepare data for LIME
+    explainer = lime.lime_tabular.LimeTabularExplainer(
+        X_train.values, 
+        feature_names=feature_names, 
+        class_names=['Low Risk', 'High Risk'],
+        discretize_continuous=True
+    )
+    
+    # Convert input data to numpy array for LIME
+    input_array = input_data.values[0]
+    
+    # Generate explanation
+    explanation = explainer.explain_instance(
+        input_array, 
+        model.predict_proba, 
+        num_features=10
+    )
+    
+    # Create HTML explanation
+    html_explanation = "<div class='lime-explanation'>"
+    html_explanation += "<h3>Local Interpretable Model-Agnostic Explanations (LIME)</h3>"
+    
+    # Add text explanation
+    html_explanation += "<div class='explanation-text'>"
+    html_explanation += "<p><strong>Prediction Probability:</strong> {:.2f}%</p>".format(
+        model.predict_proba(input_data)[0][1] * 100
+    )
+    html_explanation += "<p><strong>Key Influencing Factors:</strong></p>"
+    html_explanation += "<ul>"
+    
+    # Sort features by absolute importance
+    sorted_features = sorted(
+        explanation.as_list(), 
+        key=lambda x: abs(x[1]), 
+        reverse=True
+    )
+    
+    for feature, importance in sorted_features:
+        direction = "positive" if importance > 0 else "negative"
+        html_explanation += f"<li>{feature}: <span class='text-{direction}'>{importance:.4f}</span></li>"
+    
+    html_explanation += "</ul>"
+    html_explanation += "</div>"
+    
+    # Create visualization
+    plt.figure(figsize=(10, 6))
+    explanation.as_pyplot_figure()
+    plt.title("Feature Importance in Prediction")
+    plt.tight_layout()
+    
+    # Convert plot to base64
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+    image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    plt.close()
+    
+    # Add visualization to HTML
+    html_explanation += f"""
+    <div class='explanation-visualization'>
+        <img src="data:image/png;base64,{image_base64}" alt="LIME Explanation Visualization" 
+             style="max-width:100%; height:auto;"/>
+    </div>
+    """
+    
+    html_explanation += "</div>"
+    
+    return {
+        'html': html_explanation,
+        'probability': model.predict_proba(input_data)[0][1]
+    }
+
+def add_lime_explanation_to_context(request, context, input_data, model_type):
+    """
+    Add LIME explanation to context based on model type
+    
+    Args:
+        request: Django request object
+        context: Current context dictionary
+        input_data: Prepared input data for prediction
+        model_type: 'u5mr' or 'imr'
+    
+    Returns:
+        Updated context with LIME explanation
+    """
+    # Choose appropriate model and training data path
+    if model_type == 'u5mr':
+        model = u5mr_model
+        training_data_path = 'C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/u5mr_training_data.pkl'
+    elif model_type == 'imr':
+        model = imr_model
+        training_data_path = 'C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/imr_training_data.pkl'
+    else:
+        return context
+    
+    # Feature names matching your form data
+    feature_names = [
+        'Education Level', 'Residence Type', 'Wealth Index', 'Region', 
+        'Water Source', 'Postnatal Check', 'Birth Interval', 
+        'Socioeconomic Index', 'Health Access Index', 
+        'Wealth-Residence Interaction'
+    ]
+    
+    # Generate LIME explanation
+    try:
+        lime_result = generate_lime_explanation(
+            model, 
+            input_data, 
+            training_data_path, 
+            feature_names
+        )
+        
+        context['lime_explanation'] = lime_result['html']
+        context['lime_probability'] = lime_result['probability']
+    except Exception as e:
+        context['lime_explanation'] = f"Error generating LIME explanation: {str(e)}"
+    
+    return context
+
+def create_feature_importance_plot(feature_importance_data):
+    # Prepare data
+    source = ColumnDataSource(data=feature_importance_data)
+
+    # Create the figure with a wide range of interactive tools
+    plot = figure(
+        y_range=feature_importance_data['Feature'], 
+        title="Feature Importance from Random Forest (Balanced Data)",
+        toolbar_location="above",
+        tools="pan,box_zoom,zoom_in,zoom_out,reset,save,wheel_zoom"
+    )
+    
+    # Add horizontal bar chart
+    plot.hbar(
+        y='Feature', 
+        right='Importance', 
+        height=0.4, 
+        source=source, 
+        color='skyblue'
+    )
+
+    # Add hover tool to show importance values
+    hover = HoverTool(tooltips=[("Feature", "@Feature"), ("Importance", "@Importance")])
+    plot.add_tools(hover)
+
+    # Customize the plot's appearance
+    plot.xaxis.axis_label = "Importance"
+    plot.yaxis.axis_label = "Feature"
+    plot.yaxis.major_label_text_font_size = "10pt"
+    plot.title.text_font_size = "14pt"
+    plot.outline_line_color = None  # Hide the plot outline for a cleaner look
+    
+    return components(plot)
+
+def calculate_socioeconomic_index(wealth_index, education_level, residence_type):
+    """Calculate composite socioeconomic index"""
+    return (int(wealth_index) * 0.4) + (int(education_level) * 0.3) + (int(residence_type) == 1) * 0.3
+
+def calculate_health_access_index(water_source, postnatal_check):
+    """Calculate health access index"""
+    return (int(water_source) in [1, 2]) * 0.5 + (postnatal_check) * 0.5
+
+# Function to map prediction values to user-friendly labels
+def get_prediction_label(prediction):
+    return "Low Risk of Mortality , classification: 0" if prediction == 0 else "High Risk of Mortality , classification: 1"
 
 
 def success(request):
