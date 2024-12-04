@@ -1,5 +1,5 @@
 import joblib
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
 from bokeh.plotting import figure
 from bokeh.embed import components
 from bokeh.transform import dodge
@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import login_required
 from dashboard.models import *
 import numpy as np
 import lime
-import lime.lime_tabular
+from lime import lime_tabular
 import json
 import html
 import plotly.graph_objs as go
@@ -30,222 +30,30 @@ import base64
 u5mr_model = joblib.load('C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/rf_classifier_balanced_u5mr.pkl')
 imr_model = joblib.load('C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/rf_classifier_balanced_imr.pkl')
 
-def generate_lime_explanation(model, feature_names, X_input):
-    """
-    Generate LIME explanation for a single prediction
-    
-    Parameters:
-    - model: Trained machine learning model
-    - feature_names: List of feature names used in the model
-    - X_input: Input features for a single prediction
-    
-    Returns:
-    - HTML-formatted LIME explanation
-    """
-    # Load the training data to help LIME understand feature distributions
-    # Assuming you have a training dataset saved
-    X_train = joblib.load('C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/X_train.pkl')
-    
-    # Convert input to NumPy array
-    X_input = np.array(X_input).reshape(1, -1)
-    
-    # Create a LIME explainer
-    explainer = lime.lime_tabular.LimeTabularExplainer(
-        X_train,
-        feature_names=feature_names,
-        class_names=['High Mortality Risk', 'Low Mortality Risk'],
-        verbose=True,
-        mode='classification'
-    )
-    
-    # Generate explanation
-    explanation = explainer.explain_instance(
-        X_input[0], 
-        model.predict_proba, 
-        num_features=10,  # Number of top features to explain
-        top_labels=1
-    )
-    
-    # Convert explanation to HTML
-    explanation_html = "<h3>Feature Importance for Prediction</h3>"
-    explanation_html += "<table class='w-full border-collapse'>"
-    explanation_html += "<tr><th class='border p-2'>Feature</th><th class='border p-2'>Impact</th></tr>"
-    
-    for feature, impact in explanation.as_list(label=explanation.top_labels[0]):
-        # Escape HTML to prevent XSS
-        safe_feature = html.escape(feature)
-        
-        # Color-code impact (green for positive, red for negative)
-        color_class = "text-green-600" if impact > 0 else "text-red-600"
-        explanation_html += (
-            f"<tr>"
-            f"<td class='border p-2'>{safe_feature}</td>"
-            f"<td class='border p-2 {color_class}'>{impact:.4f}</td>"
-            f"</tr>"
-        )
-    
-    explanation_html += "</table>"
-    
-    # Use:
-    proba = model.predict_proba(np.array(X_input).reshape(1, -1))[0]
-    # Use:
-    prediction = model.predict(np.array(X_input).reshape(1, -1))[0]
-    
-    prediction_text = "Low Mortality Risk" if prediction == 1 else "High Mortality Risk"
-    prediction_color = "text-green-600" if prediction == 1 else "text-red-600"
-    
-    explanation_html += (
-        f"<div class='mt-4'>"
-        f"<p>Prediction: <span class='{prediction_color} font-bold'>{prediction_text}</span></p>"
-        f"<p>Probability of Low Risk: {proba[1]:.2%}</p>"
-        f"<p>Probability of High Risk: {proba[0]:.2%}</p>"
-        f"</div>"
-    )
-    
-    return explanation_html
-
-def create_3d_risk_scatter_plot(data):
-    """
-    Create a 3D scatter plot for multidimensional risk analysis
-    
-    Parameters:
-    - data: Django QuerySet of ChildMortalityAssessment or DataFrame
-    
-    Returns:
-    - Plotly figure JSON for 3D scatter plot
-    """
-    # If input is a DataFrame, process directly
-    if isinstance(data, pd.DataFrame):
-        assessment_data = data
-    else:
-        # Convert QuerySet to DataFrame
-        assessment_data = pd.DataFrame(list(data.values()))
-    
-    # Required columns for the plot
-    required_columns = ['number_of_children', 'age_at_first_sex', 'total_children_ever_born', 'risk_prediction']
-    
-    # Check if the required columns exist in the DataFrame
-    missing_columns = [col for col in required_columns if col not in assessment_data.columns]
-    
-    if missing_columns:
-        # If columns are missing, try to retrieve data from related form_data
-        try:
-            # Fetch related ChildMortalityForm data
-            form_data = ChildMortalityForm.objects.all().values(
-                'number_of_children', 
-                'age_at_first_sex', 
-                'total_children_ever_born'
-            )
-            form_df = pd.DataFrame(list(form_data))
-            
-            # Merge form data with assessment data
-            assessment_data = pd.merge(
-                assessment_data, 
-                form_df, 
-                left_index=True, 
-                right_index=True
-            )
-        except Exception as e:
-            # If merging fails, return an empty plot
-            print(f"Could not retrieve additional data: {e}")
-            return go.Figure().to_json()
-    
-    # Validate column existence after potential merge
-    missing_columns = [col for col in required_columns if col not in assessment_data.columns]
-    if missing_columns:
-        print(f"Missing columns: {missing_columns}")
-        return go.Figure().to_json()
-    
-    # Prepare data for PCA
-    X = assessment_data[['number_of_children', 'age_at_first_sex', 'total_children_ever_born']]
-    y = assessment_data['risk_prediction']
-    
-    # Convert categorical columns to numeric if needed
-    # This is necessary if the values are stored as strings or categorical
-    for col in X.columns:
-        if X[col].dtype == 'object':
-            X[col] = pd.to_numeric(X[col], errors='coerce')
-    
-    # Drop rows with NaN values
-    X_clean = X.dropna()
-    y_clean = y[X_clean.index]
-    
-    # Check if we have enough data
-    if len(X_clean) < 2:
-        return go.Figure().to_json()
-    
-    # Standardize features
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X_clean)
-    
-    # Use PCA for dimensionality reduction
-    pca = PCA(n_components=3)
-    X_pca = pca.fit_transform(X_scaled)
-    
-    # Create color mapping for risk levels
-    colors = ['red' if pred == 0 else 'green' for pred in y_clean]
-    
-    # Create 3D scatter plot
-    trace = go.Scatter3d(
-        x=X_pca[:, 0],
-        y=X_pca[:, 1],
-        z=X_pca[:, 2],
-        mode='markers',
-        marker=dict(
-            size=5,
-            color=colors,
-            opacity=0.7,
-            colorscale='Viridis'
-        ),
-        text=[f"Risk Level: {'High' if pred == 0 else 'Low'}" for pred in y_clean],
-        hoverinfo='text'
-    )
-    
-    # Variance explained by each component
-    variance_explained = pca.explained_variance_ratio_
-    
-    layout = go.Layout(
-        scene=dict(
-            xaxis_title=f'PC1 ({variance_explained[0]*100:.2f}%)',
-            yaxis_title=f'PC2 ({variance_explained[1]*100:.2f}%)',
-            zaxis_title=f'PC3 ({variance_explained[2]*100:.2f}%)',
-            aspectmode='cube'
-        ),
-        title='Multidimensional Risk Analysis Scatter Plot',
-        hovermode='closest'
-    )
-    
-    fig = go.Figure(data=[trace], layout=layout)
-    
-    # Convert to JSON for frontend rendering
-    return fig.to_json()
-
 def dashboard(request):
     # Database statistics
     total_assessments = ChildMortalityAssessment.objects.count()
     high_risk_cases = ChildMortalityAssessment.objects.filter(risk_prediction=1).count()
     active_monitoring = ChildMortalityAssessment.objects.filter(status='active').count()
-    
+
     # Calculate success rate
-    total_high_risk = ChildMortalityAssessment.objects.filter(risk_prediction=1).count()
     successful_interventions = ChildMortalityAssessment.objects.filter(
-        risk_prediction=1, 
+        risk_prediction=1,
         intervention_outcome='successful'
     ).count()
-    
-    success_rate = (successful_interventions / total_high_risk * 100) if total_high_risk > 0 else 0
 
-    # Feature importance data (example, replace with actual data)
+    success_rate = (successful_interventions / high_risk_cases * 100) if high_risk_cases > 0 else 0
+
+    # Feature importance data
     feature_importance_data = {
-        'Feature': ['b12', 'v101', 'v113', 'socioeconomic_index', 'm70', 
-                    'v106', 'wealth_residence_interaction', 'v190', 
-                    'health_access_index', 'v025'],
+        'Feature': ['b12-Succeeding birth interval (months)', 'v101-Region', 'v113-Source of drinking water', 'socioeconomic_index', 'm70-Baby postnatal check within 2 months ', 
+                    'v106-Highest educational level', 'wealth_residence_interaction', 'v190-Wealth index combined', 
+                    'health_access_index', 'v025-Type of place of residence '],
         'Importance': [0.45, 0.35, 0.3, 0.2, 0.15, 0.1, 0.08, 0.06, 0.04, 0.02]
     }
 
     # Create Bokeh feature importance plot
     script, div = create_feature_importance_plot(feature_importance_data)
-
 
     # Key insights
     key_insights = [
@@ -255,9 +63,9 @@ def dashboard(request):
         "Postnatal care is a key determinant of infant and child mortality.",
     ]
 
-    # Initialize context with default values
+    # Initialize context
     context = {
-        'form': None,
+        'form': MortalityPredictionForm(),
         'key_insights': key_insights,
         'total_assessments': total_assessments,
         'high_risk_cases': high_risk_cases,
@@ -266,182 +74,163 @@ def dashboard(request):
         'has_prediction': False,
         'script': script,
         'div': div,
-        'lime_explanation': None
+        'lime_explanation': None,
+        # Add mortality rate metrics
+        'neonatal_mortality_rate': 27.32,
+        'postneonatal_mortality_rate': 28.82,
+        'infant_mortality_rate': 56.14,
+        'child_mortality_rate': 33.98,
+        'under_five_mortality_rate': 88.22,
+        'vaccinations': ['BCG', 'Hepatitis B', 'Rotavirus', 'DPT', 'Polio', 'Pneumococcal']
     }
 
+    # Handle POST request
     if request.method == 'POST':
         form = MortalityPredictionForm(request.POST)
         context['form'] = form
 
         if form.is_valid():
-            # Extract form data
-            data = {
-                'v106': form.cleaned_data['education_level'],
-                'v025': form.cleaned_data['residence_type'],
-                'v190': form.cleaned_data['wealth_index'],
-                'v101': form.cleaned_data['region'],
-                'v113': form.cleaned_data['water_source'],
-                'm70': form.cleaned_data['postnatal_check'],
-                'b12': form.cleaned_data.get('succeeding_birth_interval', 0),
-                'socioeconomic_index': calculate_socioeconomic_index(
-                    form.cleaned_data['wealth_index'], 
-                    form.cleaned_data['education_level'], 
-                    form.cleaned_data['residence_type']
-                ),
-                'health_access_index': calculate_health_access_index(
-                    form.cleaned_data['water_source'], 
-                    form.cleaned_data['postnatal_check']
-                ),
-                'wealth_residence_interaction': int(form.cleaned_data['wealth_index']) * int(form.cleaned_data['residence_type'])
-            }
-    
-            # Convert to DataFrame
-            input_data = pd.DataFrame([data])
-
-            # Check which button was pressed
-            calculate_type = request.POST.get('calculate')
-            if calculate_type == 'u5mr':
-                prediction = u5mr_model.predict(input_data)[0]
-                probability = u5mr_model.predict_proba(input_data)[0][1]
-                result_label = "Under-Five Mortality Risk"
+            try:
+                # Extract and process form data
+                input_data = prepare_input_data(form.cleaned_data)
+                calculate_type = request.POST.get('calculate')
                 
-                # Add LIME explanation for U5MR
-                context = add_lime_explanation_to_context(
-                    request, 
-                    context, 
-                    input_data, 
-                    'u5mr'
-                )
-                
-            elif calculate_type == 'imr':
-                prediction = imr_model.predict(input_data)[0]
-                probability = imr_model.predict_proba(input_data)[0][1]
-                result_label = "Infant Mortality Risk"
-                
-                # Add LIME explanation for IMR
-                context = add_lime_explanation_to_context(
-                    request, 
-                    context, 
-                    input_data, 
-                    'imr'
-                )
+                # Perform prediction
+                if calculate_type == 'u5mr':
+                    context = handle_prediction(request, context, input_data, 'u5mr', u5mr_model)
+                elif calculate_type == 'imr':
+                    context = handle_prediction(request, context, input_data, 'imr', imr_model)
 
-            # Map prediction to a user-friendly message
-            prediction_label = get_prediction_label(prediction)    
-
-            # Create assessment record
-            assessment = ChildMortalityAssessment.objects.create(
-                user=request.user,
-                risk_prediction=prediction
-            )
-
-            # Update context with prediction details
-            context.update({
-                'assessment': assessment,
-                'prediction': prediction_label,
-                'probability': probability,
-                'result_label': result_label,
-                'has_prediction': True
-            })
-
-            return render(request, 'dashboard/dashboard.html', context)
-    else:
-        context['form'] = MortalityPredictionForm()
+                return render(request, 'dashboard/dashboard.html', context)
+            except Exception as e:
+                context['error'] = f"An error occurred during prediction: {str(e)}"
 
     return render(request, 'dashboard/dashboard.html', context)
+
+def prepare_input_data(cleaned_data):
+    return pd.DataFrame([{
+        'v106': int(cleaned_data['education_level']),
+        'v025': int(cleaned_data['residence_type']),
+        'v190': int(cleaned_data['wealth_index']),
+        'v101': int(cleaned_data['region']),
+        'v113': int(cleaned_data['water_source']),
+        'm70': int(cleaned_data['postnatal_check']),
+        'b12': int(cleaned_data.get('succeeding_birth_interval', 0)),
+        'socioeconomic_index': calculate_socioeconomic_index(
+            cleaned_data['wealth_index'], 
+            cleaned_data['education_level'], 
+            cleaned_data['residence_type']
+        ),
+        'health_access_index': calculate_health_access_index(
+            cleaned_data['water_source'], 
+            cleaned_data['postnatal_check']
+        ),
+        'wealth_residence_interaction': int(cleaned_data['wealth_index']) * int(cleaned_data['residence_type'])
+    }])
+    
+def handle_prediction(request, context, input_data, model_type, model):
+    """
+    Handle prediction logic and update context.
+    """
+    try:
+        prediction = model.predict(input_data)[0]
+        probability = model.predict_proba(input_data)[0][1]
+        result_label = "Under-Five Mortality Risk" if model_type == 'u5mr' else "Infant Mortality Risk"
+        prediction_label = get_prediction_label(prediction)
+        
+        # Add LIME explanation
+        context = add_lime_explanation_to_context(request, context, input_data, model_type)
+
+        # Create assessment record
+        assessment = ChildMortalityAssessment.objects.create(
+            user=request.user,
+            risk_prediction=prediction
+        )
+
+        context.update({
+            'assessment': assessment,
+            'prediction': prediction_label,
+            'probability': probability,
+            'result_label': result_label,
+            'has_prediction': True
+        })
+    except Exception as e:
+        context['error'] = f"Error during {model_type} prediction: {str(e)}"
+    
+    return context
 
 def generate_lime_explanation(model, input_data, training_data_path, feature_names=None):
     """
     Generate a LIME explanation for a given model and input data.
-    
-    Args:
-        model: Trained machine learning model
-        input_data (pd.DataFrame): Single row of input data to explain
-        training_data_path (str): Path to the pickle file with training data
-        feature_names (list, optional): List of feature names 
-    
-    Returns:
-        dict: Containing HTML-formatted explanation and visualization
     """
     # Load training data
     training_data = joblib.load(training_data_path)
     X_train = training_data['X_train']
-    
-    # If feature names not provided, use columns of input data
+
+    # Set feature names if not provided
     if feature_names is None:
         feature_names = input_data.columns.tolist()
-    
-    # Prepare data for LIME
-    explainer = lime.lime_tabular.LimeTabularExplainer(
-        X_train.values, 
-        feature_names=feature_names, 
+
+    # Prepare LIME explainer
+    explainer = lime_tabular.LimeTabularExplainer(
+        X_train.values,
+        feature_names=feature_names,
         class_names=['Low Risk', 'High Risk'],
         discretize_continuous=True
     )
-    
-    # Convert input data to numpy array for LIME
-    input_array = input_data.values[0]
-    
+
     # Generate explanation
-    explanation = explainer.explain_instance(
-        input_array, 
-        model.predict_proba, 
+    input_array = input_data.values[0]
+    explanation_low = explainer.explain_instance(
+        input_array,
+        model.predict_proba,
+        labels=[0],  # Low Risk
         num_features=10
     )
-    
-    # Create HTML explanation
+    explanation_high = explainer.explain_instance(
+        input_array,
+        model.predict_proba,
+        labels=[1],  # High Risk
+        num_features=10
+    )
+
+    # Combine explanations in HTML
+    html_explanation = f"<h3>Low Risk Explanation</h3>{explanation_low.as_html()}"
+    html_explanation += f"<h3>High Risk Explanation</h3>{explanation_high.as_html()}"
+
+    return {
+        'html': html_explanation,
+        'probability': model.predict_proba(input_data)[0][1]
+    }
+
+def format_lime_explanation_html(explanation, model, input_data):
+    """
+    Format LIME explanation into HTML.
+    """
     html_explanation = "<div class='lime-explanation'>"
-    html_explanation += "<h3>Local Interpretable Model-Agnostic Explanations (LIME)</h3>"
-    
+    html_explanation += "<h3>LIME Explanation</h3>"
+
     # Add text explanation
-    html_explanation += "<div class='explanation-text'>"
-    html_explanation += "<p><strong>Prediction Probability:</strong> {:.2f}%</p>".format(
-        model.predict_proba(input_data)[0][1] * 100
-    )
-    html_explanation += "<p><strong>Key Influencing Factors:</strong></p>"
     html_explanation += "<ul>"
-    
-    # Sort features by absolute importance
-    sorted_features = sorted(
-        explanation.as_list(), 
-        key=lambda x: abs(x[1]), 
-        reverse=True
-    )
-    
-    for feature, importance in sorted_features:
+    for feature, importance in sorted(explanation.as_list(), key=lambda x: abs(x[1]), reverse=True):
         direction = "positive" if importance > 0 else "negative"
         html_explanation += f"<li>{feature}: <span class='text-{direction}'>{importance:.4f}</span></li>"
-    
     html_explanation += "</ul>"
-    html_explanation += "</div>"
-    
-    # Create visualization
+
+    # Generate plot
     plt.figure(figsize=(10, 6))
     explanation.as_pyplot_figure()
-    plt.title("Feature Importance in Prediction")
     plt.tight_layout()
-    
-    # Convert plot to base64
     buffer = io.BytesIO()
     plt.savefig(buffer, format='png')
     buffer.seek(0)
     image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
     plt.close()
-    
-    # Add visualization to HTML
-    html_explanation += f"""
-    <div class='explanation-visualization'>
-        <img src="data:image/png;base64,{image_base64}" alt="LIME Explanation Visualization" 
-             style="max-width:100%; height:auto;"/>
-    </div>
-    """
-    
+
+    html_explanation += f'<img src="data:image/png;base64,{image_base64}" alt="Explanation Visualization"/>'
     html_explanation += "</div>"
-    
-    return {
-        'html': html_explanation,
-        'probability': model.predict_proba(input_data)[0][1]
-    }
+
+    return html_explanation
 
 def add_lime_explanation_to_context(request, context, input_data, model_type):
     """
@@ -569,10 +358,96 @@ def signup_view(request):
         form = UserCreationForm()
     return render(request, 'dashboard/signup.html', {'form': form})
 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from django.contrib import messages
+
 @login_required
-def profile_view(request):
+def profile_edit_view(request):
+    if request.method == 'POST':
+        user = request.user
+        
+        # Update username if changed and not empty
+        new_username = request.POST.get('username', '').strip()
+        if new_username and new_username != user.username:
+            # Check if username is already taken
+            from django.contrib.auth.models import User
+            if User.objects.filter(username=new_username).exists():
+                messages.error(request, 'Username is already taken.')
+            else:
+                user.username = new_username
+        
+        # Update first and last name
+        user.first_name = request.POST.get('first_name', '').strip()
+        user.last_name = request.POST.get('last_name', '').strip()
+        
+        try:
+            user.save()
+            messages.success(request, 'Profile updated successfully!')
+            return redirect('profile_edit')
+        except Exception as e:
+            messages.error(request, f'An error occurred: {str(e)}')
+    
     return render(request, 'dashboard/profile.html')
 
 def logout_view(request):
     logout(request)
     return redirect('dashboard')
+
+@login_required
+def assessments_management(request):
+    # Basic statistics
+    total_assessments = ChildMortalityAssessment.objects.count()
+    high_risk_cases = ChildMortalityAssessment.objects.filter(risk_prediction=1).count()
+    active_monitoring = ChildMortalityAssessment.objects.filter(status='active').count()
+
+    # Success rate calculation
+    successful_interventions = ChildMortalityAssessment.objects.filter(
+        risk_prediction=1, 
+        intervention_outcome='successful'
+    ).count()
+    success_rate = (successful_interventions / high_risk_cases * 100) if high_risk_cases > 0 else 0
+
+    # Get all assessments for the table
+    assessments = ChildMortalityAssessment.objects.filter(user=request.user).order_by('-assessment_date')
+
+    context = {
+        'total_assessments': total_assessments,
+        'high_risk_cases': high_risk_cases,
+        'active_monitoring': active_monitoring,
+        'success_rate': success_rate,
+        'assessments': assessments,
+        'form': MortalityPredictionForm(),
+    }
+
+    return render(request, 'dashboard/assessments_management.html', context)
+
+@login_required
+def update_assessment(request, assessment_id):
+    assessment = get_object_or_404(ChildMortalityAssessment, id=assessment_id, user=request.user)
+    
+    if request.method == 'POST':
+        assessment.status = request.POST.get('status')
+        assessment.intervention_outcome = request.POST.get('intervention_outcome')
+        assessment.save()
+    
+    return redirect('assessments_management')
+
+@login_required
+def delete_assessment(request, assessment_id):
+    assessment = get_object_or_404(ChildMortalityAssessment, id=assessment_id, user=request.user)
+    
+    if request.method == 'POST':
+        assessment.delete()
+    
+    return redirect('assessments_management')
+
+@login_required
+def assessment_details(request, assessment_id):
+    assessment = get_object_or_404(ChildMortalityAssessment, id=assessment_id, user=request.user)
+    
+    context = {
+        'assessment': assessment,
+    }
+    
+    return render(request, 'dashboard/assessment_details.html', context)

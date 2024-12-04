@@ -1,123 +1,135 @@
 {% extends "dashboard/base.html" %}
 
 {% block content %}
-<div class="min-h-screen flex items-center justify-center">
+<div
+    class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center px-4 py-12">
     <div class="w-full max-w-md">
-        <div class="bg-white shadow-2xl rounded-2xl border border-gray-100 auth-card p-8">
+        <div
+            class="bg-gray-800 shadow-2xl rounded-2xl border border-gray-700 p-8 transform transition-all duration-500 hover:scale-105">
             <div class="text-center mb-8">
-                <i class="ri-user-add-line text-6xl text-green-600 mb-4 block text-center"></i>
-                <h2 class="text-3xl font-extrabold text-gray-900">Create Your Account</h2>
-                <p class="text-gray-600 mt-2">Join the Child Health Prediction Platform</p>
+                <div class="flex justify-center mb-4">
+                    <div class="bg-gradient-to-r from-cyan-400 to-blue-600 rounded-full p-4 inline-block">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-white" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                        </svg>
+                    </div>
+                </div>
+                <h2
+                    class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600 mb-2">
+                    Create Account
+                </h2>
+                <p class="text-gray-400 text-sm">Join our platform and unlock new possibilities</p>
             </div>
 
             <form method="post" class="space-y-6" id="signupForm">
                 {% csrf_token %}
 
-                <div>
-                    <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                <!-- Username Input -->
+                <div class="group relative">
+                    <input type="text" name="username"
+                        class="peer h-12 w-full text-white bg-transparent border-b-2 border-gray-600 text-lg focus:outline-none focus:border-cyan-500 transition-colors duration-300 pl-2"
+                        placeholder=" " required>
+                    <label
+                        class="transform transition-all absolute top-0 left-0 h-full flex items-center text-gray-400 text-sm group-focus-within:text-cyan-500 group-focus-within:text-xs group-focus-within:-translate-y-full">
                         Username
                     </label>
-                    <div class="mt-1">
-                        {{ form.username }}
-                        {% if form.username.errors %}
-                        <div class="text-red-500 text-sm mt-1">
-                            {% for error in form.username.errors %}
-                            {{ error }}
-                            {% endfor %}
-                        </div>
-                        {% endif %}
+                    {% if form.username.errors %}
+                    <div class="text-red-400 text-sm mt-1">
+                        {% for error in form.username.errors %}
+                        {{ error }}
+                        {% endfor %}
                     </div>
+                    {% endif %}
                 </div>
 
-                <div>
-                    <label for="{{ form.password1.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                <!-- Password Input -->
+                <div class="group relative">
+                    <input type="password" name="password1"
+                        class="peer h-12 w-full text-white bg-transparent border-b-2 border-gray-600 text-lg focus:outline-none focus:border-cyan-500 transition-colors duration-300 pl-2 password-input"
+                        placeholder=" " required>
+                    <label
+                        class="transform transition-all absolute top-0 left-0 h-full flex items-center text-gray-400 text-sm group-focus-within:text-cyan-500 group-focus-within:text-xs group-focus-within:-translate-y-full">
                         Password
                     </label>
-                    <div class="mt-1">
-                        {{ form.password1 }}
-                        {% if form.password1.errors %}
-                        <div class="text-red-500 text-sm mt-1">
-                            {% for error in form.password1.errors %}
-                            {{ error }}
-                            {% endfor %}
-                        </div>
-                        {% endif %}
+                    <div
+                        class="password-toggle absolute right-0 top-1/2 -translate-y-1/2 cursor-pointer opacity-50 hover:opacity-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                    </div>
+                    {% if form.password1.errors %}
+                    <div class="text-red-400 text-sm mt-1">
+                        {% for error in form.password1.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div id="password-strength" class="h-1 mt-1 w-full bg-gray-700">
+                        <div id="strength-indicator" class="h-full w-0 transition-all duration-300"></div>
+                    </div>
+                    <div id="password-requirements" class="text-xs text-gray-500 mt-1 hidden">
+                        <p>Password must include:</p>
+                        <ul class="list-disc pl-5">
+                            <li id="length-req">At least 8 characters</li>
+                            <li id="uppercase-req">One uppercase letter</li>
+                            <li id="lowercase-req">One lowercase letter</li>
+                            <li id="number-req">One number</li>
+                            <li id="special-req">One special character</li>
+                        </ul>
                     </div>
                 </div>
 
-                <div>
-                    <label for="{{ form.password2.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                <!-- Confirm Password Input -->
+                <div class="group relative">
+                    <input type="password" name="password2"
+                        class="peer h-12 w-full text-white bg-transparent border-b-2 border-gray-600 text-lg focus:outline-none focus:border-cyan-500 transition-colors duration-300 pl-2 password-input"
+                        placeholder=" " required>
+                    <label
+                        class="transform transition-all absolute top-0 left-0 h-full flex items-center text-gray-400 text-sm group-focus-within:text-cyan-500 group-focus-within:text-xs group-focus-within:-translate-y-full">
                         Confirm Password
                     </label>
-                    <div class="mt-1">
-                        {{ form.password2 }}
-                        {% if form.password2.errors %}
-                        <div class="text-red-500 text-sm mt-1">
-                            {% for error in form.password2.errors %}
-                            {{ error }}
-                            {% endfor %}
-                        </div>
-                        {% endif %}
+                    <div
+                        class="password-toggle absolute right-0 top-1/2 -translate-y-1/2 cursor-pointer opacity-50 hover:opacity-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
                     </div>
                 </div>
 
                 {% if form.non_field_errors %}
-                <div class="text-red-500 text-sm mt-2 text-center">
+                <div class="text-red-400 text-sm text-center">
                     {% for error in form.non_field_errors %}
                     {{ error }}
                     {% endfor %}
                 </div>
                 {% endif %}
 
-                <div>
+                <div class="pt-4">
                     <button type="submit"
-                        class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 pulse-hover">
-                        Sign Up
+                        class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white py-3 rounded-lg hover:from-cyan-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-50">
+                        Create Account
                     </button>
                 </div>
             </form>
 
-            <div class="mt-6">
-                <div class="relative">
-                    <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t border-gray-300"></div>
-                    </div>
-                    <div class="relative flex justify-center text-sm">
-                        <span class="px-2 bg-white text-gray-500">
-                            Or sign up with
-                        </span>
-                    </div>
-                </div>
-
-                <div class="mt-6 grid grid-cols-3 gap-3">
-                    <div>
-                        <a href="#"
-                            class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                            <i class="ri-google-line text-xl"></i>
-                        </a>
-                    </div>
-                    <div>
-                        <a href="#"
-                            class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                            <i class="ri-facebook-line text-xl"></i>
-                        </a>
-                    </div>
-                    <div>
-                        <a href="#"
-                            class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                            <i class="ri-github-line text-xl"></i>
-                        </a>
-                    </div>
-                </div>
-
-                <div class="mt-6 text-center">
-                    <p class="text-sm text-gray-600">
-                        Already have an account?
-                        <a href="{% url 'account_login' %}" class="font-medium text-green-600 hover:underline">
-                            Log in
-                        </a>
-                    </p>
-                </div>
+            <div class="mt-6 text-center">
+                <p class="text-sm text-gray-400">
+                    Already have an account?
+                    <a href="{% url 'account_login' %}"
+                        class="font-medium text-cyan-400 hover:text-cyan-300 transition-colors">
+                        Log in
+                    </a>
+                </p>
             </div>
         </div>
     </div>
@@ -127,29 +139,118 @@
 {% block extra_scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const signupForm = document.getElementById('signupForm');
-        const globalLoading = document.getElementById('global-loading');
+        // Password visibility toggle
+        const passwordToggles = document.querySelectorAll('.password-toggle');
+        const passwordInputs = document.querySelectorAll('.password-input');
 
+        passwordToggles.forEach((toggle, index) => {
+            toggle.addEventListener('click', function () {
+                const input = passwordInputs[index];
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    toggle.querySelector('svg').innerHTML = `
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.87 9.87 0 011.302-3.98m1.024 1.424A10.05 10.05 0 0012 13c4.478 0 8.268-2.943 9.542-7-.27-.747-.646-1.456-1.1-2.12M9 12a3 3 0 003 3 3 3 0 003-3 3 3 0 00-3-3 3 3 0 00-3 3z" />
+                    `;
+                } else {
+                    input.type = 'password';
+                    toggle.querySelector('svg').innerHTML = `
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    `;
+                }
+            });
+        });
+
+        // Password strength and requirements
+        const newPasswordInput = document.querySelector('input[name="password1"]');
+        const confirmPasswordInput = document.querySelector('input[name="password2"]');
+        const strengthIndicator = document.getElementById('strength-indicator');
+        const passwordRequirements = document.getElementById('password-requirements');
+
+        // Password requirement elements
+        const lengthReq = document.getElementById('length-req');
+        const uppercaseReq = document.getElementById('uppercase-req');
+        const lowercaseReq = document.getElementById('lowercase-req');
+        const numberReq = document.getElementById('number-req');
+        const specialReq = document.getElementById('special-req');
+
+        newPasswordInput.addEventListener('input', function () {
+            const password = this.value;
+            let strength = 0;
+            let requirementsMet = {
+                length: false,
+                uppercase: false,
+                lowercase: false,
+                number: false,
+                special: false
+            };
+
+            // Check password requirements
+            requirementsMet.length = password.length >= 8;
+            requirementsMet.uppercase = password.match(/[A-Z]+/) !== null;
+            requirementsMet.lowercase = password.match(/[a-z]+/) !== null;
+            requirementsMet.number = password.match(/[0-9]+/) !== null;
+            requirementsMet.special = password.match(/[$@#&!]+/) !== null;
+
+            // Calculate strength
+            strength = Object.values(requirementsMet).filter(Boolean).length;
+
+            // Update strength indicator
+            strengthIndicator.classList.remove('bg-red-500', 'bg-yellow-500', 'bg-green-500');
+            strengthIndicator.style.width = `${strength * 20}%`;
+
+            if (strength <= 2) {
+                strengthIndicator.classList.add('bg-red-500');
+            } else if (strength <= 4) {
+                strengthIndicator.classList.add('bg-yellow-500');
+            } else {
+                strengthIndicator.classList.add('bg-green-500');
+            }
+
+            // Update requirement styling
+            passwordRequirements.classList.remove('hidden');
+            lengthReq.classList.toggle('text-green-500', requirementsMet.length);
+            uppercaseReq.classList.toggle('text-green-500', requirementsMet.uppercase);
+            lowercaseReq.classList.toggle('text-green-500', requirementsMet.lowercase);
+            numberReq.classList.toggle('text-green-500', requirementsMet.number);
+            specialReq.classList.toggle('text-green-500', requirementsMet.special);
+        });
+
+        // Form submit validation
+        const signupForm = document.getElementById('signupForm');
         signupForm.addEventListener('submit', function (e) {
             const username = signupForm.querySelector('input[name="username"]').value;
-            const email = signupForm.querySelector('input[name="email"]').value;
             const password1 = signupForm.querySelector('input[name="password1"]').value;
             const password2 = signupForm.querySelector('input[name="password2"]').value;
 
-            // Client-side validation
-            if (!username || !email || !password1 || !password2) {
+            // Check if all fields are filled
+            if (!username || !password1 || !password2) {
                 e.preventDefault();
                 alert('Please fill in all fields');
                 return;
             }
 
+            // Check if passwords match
             if (password1 !== password2) {
                 e.preventDefault();
                 alert('Passwords do not match');
                 return;
             }
 
-            globalLoading.classList.remove('hidden');
+            // Validate password strength
+            const strengthReq = [
+                password1.length >= 8,
+                password1.match(/[A-Z]+/) !== null,
+                password1.match(/[a-z]+/) !== null,
+                password1.match(/[0-9]+/) !== null,
+                password1.match(/[$@#&!]+/) !== null
+            ];
+
+            if (strengthReq.filter(Boolean).length < 5) {
+                e.preventDefault();
+                alert('Please create a stronger password');
+                return;
+            }
         });
     });
 </script>

@@ -1,0 +1,214 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}Child Mortality Assessment Management{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="bg-white shadow-xl rounded-lg overflow-hidden">
+        <!-- Header -->
+        <div class="bg-teal-600 text-white px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold flex items-center">
+                <i class="ri-heart-pulse-line mr-3"></i>
+                Child Mortality Assessment Management
+            </h1>
+            <div class="flex space-x-3">
+                <button id="filterButton" class="btn btn-white">
+                    <i class="ri-filter-line mr-2"></i>Filter
+                </button>
+                <button id="newAssessmentButton" class="btn btn-green">
+                    <i class="ri-add-line mr-2"></i>New Assessment
+                </button>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 p-6 bg-gray-50">
+            <div class="stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Total Assessments</p>
+                        <p class="text-2xl font-bold">{{ total_assessments }}</p>
+                    </div>
+                    <i class="ri-bar-chart-line text-3xl text-blue-500"></i>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">High Risk Cases</p>
+                        <p class="text-2xl font-bold text-red-500">{{ high_risk_cases }}</p>
+                    </div>
+                    <i class="ri-alert-line text-3xl text-red-500"></i>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Success Rate</p>
+                        <p class="text-2xl font-bold text-green-500">{{ success_rate|floatformat:2 }}%</p>
+                    </div>
+                    <i class="ri-check-double-line text-3xl text-green-500"></i>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Active Monitoring</p>
+                        <p class="text-2xl font-bold">{{ active_monitoring }}</p>
+                    </div>
+                    <i class="ri-heart-pulse-line text-3xl text-purple-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assessment Table -->
+        <div class="p-6">
+            <div class="overflow-x-auto">
+                <table class="w-full whitespace-nowrap">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="table-header">Assessment ID</th>
+                            <th class="table-header">Risk Level</th>
+                            <th class="table-header">Status</th>
+                            <th class="table-header">Date</th>
+                            <th class="table-header">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for assessment in assessments %}
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="table-cell">{{ assessment.id }}</td>
+                            <td class="table-cell">
+                                <span
+                                    class="badge {% if assessment.risk_prediction == 1 %}badge-red{% else %}badge-green{% endif %}">
+                                    {% if assessment.risk_prediction == 1 %}High Risk{% else %}Low Risk{% endif %}
+                                </span>
+                            </td>
+                            <td class="table-cell">
+                                <span class="badge 
+                                    {% if assessment.status == 'active' %}badge-yellow
+                                    {% elif assessment.status == 'resolved' %}badge-green
+                                    {% else %}badge-gray{% endif %}">
+                                    {{ assessment.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="table-cell">{{ assessment.assessment_date|date:"d M Y" }}</td>
+                            <td class="table-cell">
+                                <div class="flex space-x-2">
+                                    <a href="{% url 'assessment_details' assessment.id %}"
+                                        class="text-blue-600 hover:text-blue-900 transition">
+                                        <i class="ri-eye-line"></i>
+                                    </a>
+                                    <button data-edit-assessment="{{ assessment.id }}"
+                                        class="text-green-600 hover:text-green-900 transition">
+                                        <i class="ri-edit-line"></i>
+                                    </button>
+                                    <button data-delete-assessment="{{ assessment.id }}"
+                                        class="text-red-600 hover:text-red-900 transition">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Update Assessment Modal -->
+<div id="updateModal" class="modal hidden">
+    <div class="modal-overlay">
+        <div class="modal-content">
+            <form id="updateAssessmentForm" method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <h3 class="modal-title">Update Assessment</h3>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select">
+                            <option value="active">Active Monitoring</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="closed">Closed</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Intervention Outcome</label>
+                        <select name="intervention_outcome" class="form-select">
+                            <option value="ongoing">Ongoing</option>
+                            <option value="successful">Successful</option>
+                            <option value="unsuccessful">Unsuccessful</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Update</button>
+                    <button type="button" onclick="closeUpdateModal()" class="btn btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    function openUpdateModal(assessmentId) {
+        const modal = document.getElementById('updateModal');
+        const form = document.getElementById('updateAssessmentForm');
+        form.action = `/assessments/${assessmentId}/update/`;
+        modal.classList.remove('hidden');
+    }
+
+    function closeUpdateModal() {
+        const modal = document.getElementById('updateModal');
+        modal.classList.add('hidden');
+    }
+
+    function deleteAssessment(assessmentId) {
+        if (confirm('Are you sure you want to delete this assessment?')) {
+            fetch(`/assessments/${assessmentId}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            }).then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    // Handle error case
+                    alert('Failed to delete the assessment');
+                }
+            }).catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while deleting the assessment');
+            });
+        }
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', function () {
+        // Edit buttons
+        const editButtons = document.querySelectorAll('[data-edit-assessment]');
+        editButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const assessmentId = this.getAttribute('data-edit-assessment');
+                openUpdateModal(assessmentId);
+            });
+        });
+
+        // Delete buttons
+        const deleteButtons = document.querySelectorAll('[data-delete-assessment]');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const assessmentId = this.getAttribute('data-delete-assessment');
+                deleteAssessment(assessmentId);
+            });
+        });
+    });
+</script>
+<script src="{% static 'dashboard/js/assessment.js' %}"></script>
+{% endblock %}

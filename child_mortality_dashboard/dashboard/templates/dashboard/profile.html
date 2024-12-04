@@ -1,13 +1,64 @@
 {% extends "dashboard/base.html" %}
-
 {% block content %}
-<div class="max-w-md mx-auto mt-10">
-    <h2 class="text-2xl mb-6">Profile</h2>
-    <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-        <p><strong>Username:</strong> {{ user.username }}</p>
-        <p><strong>Email:</strong> {{ user.email }}</p>
-        <p><strong>First Name:</strong> {{ user.first_name }}</p>
-        <p><strong>Last Name:</strong> {{ user.last_name }}</p>
+<div
+    class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center px-4 py-8">
+    <div class="w-full max-w-md space-y-8">
+        <div
+            class="bg-gray-800 shadow-2xl rounded-2xl border border-gray-700 p-8 transform transition-all duration-300 hover:scale-105">
+            <h2 class="text-3xl font-extrabold text-white mb-6 text-center tracking-wide">
+                Profile Settings
+            </h2>
+
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+
+                <div class="group relative">
+                    <input type="text" name="username" value="{{ user.username }}"
+                        class="peer h-12 w-full text-white bg-transparent border-b-2 border-gray-600 text-lg focus:outline-none focus:border-cyan-500 transition-colors duration-300 pl-2"
+                        placeholder=" " required>
+                    <label
+                        class="transform transition-all absolute top-0 left-0 h-full flex items-center text-gray-400 text-sm group-focus-within:text-cyan-500 group-focus-within:text-xs group-focus-within:-translate-y-full">
+                        Username
+                    </label>
+                </div>
+
+                <div class="group relative">
+                    <input type="text" name="first_name" value="{{ user.first_name }}"
+                        class="peer h-12 w-full text-white bg-transparent border-b-2 border-gray-600 text-lg focus:outline-none focus:border-cyan-500 transition-colors duration-300 pl-2"
+                        placeholder=" ">
+                    <label
+                        class="transform transition-all absolute top-0 left-0 h-full flex items-center text-gray-400 text-sm group-focus-within:text-cyan-500 group-focus-within:text-xs group-focus-within:-translate-y-full">
+                        First Name
+                    </label>
+                </div>
+
+                <div class="group relative">
+                    <input type="text" name="last_name" value="{{ user.last_name }}"
+                        class="peer h-12 w-full text-white bg-transparent border-b-2 border-gray-600 text-lg focus:outline-none focus:border-cyan-500 transition-colors duration-300 pl-2"
+                        placeholder=" ">
+                    <label
+                        class="transform transition-all absolute top-0 left-0 h-full flex items-center text-gray-400 text-sm group-focus-within:text-cyan-500 group-focus-within:text-xs group-focus-within:-translate-y-full">
+                        Last Name
+                    </label>
+                </div>
+
+                <div class="flex flex-col space-y-4 pt-4">
+                    <button type="submit"
+                        class="w-full bg-cyan-600 text-white py-3 rounded-lg hover:bg-cyan-700 transition-colors duration-300 font-semibold tracking-wide">
+                        Update Profile
+                    </button>
+
+                    <a href="{% url 'account_change_password' %}"
+                        class="w-full text-center bg-transparent border-2 border-gray-600 text-gray-300 py-3 rounded-lg hover:bg-gray-700 transition-colors duration-300 font-semibold tracking-wide">
+                        Change Password
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="text-center text-gray-500 text-sm">
+            © {% now "Y" %} Child Mortality Dashboard. Profile Management
+        </div>
     </div>
 </div>
 {% endblock %}

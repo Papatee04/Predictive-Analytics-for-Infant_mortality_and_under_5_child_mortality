@@ -6,12 +6,17 @@ from django.contrib.auth import views as auth_views
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
     path('success/', views.success, name='success'),
+    path('assessments/', views.assessments_management, name='assessments_management'),
+    path('assessments/<int:assessment_id>/update/', views.update_assessment, name='update_assessment'),
+    path('assessments/<int:assessment_id>/delete/', views.delete_assessment, name='delete_assessment'),
+    path('assessments/<int:assessment_id>/', views.assessment_details, name='assessment_details'),
+
 
     # Authentication URLs
     path('login/', login_view, name='account_login'),
     path('logout/', logout_view, name='account_logout'),
     path('signup/', signup_view, name='account_signup'),
-    path('profile/', profile_view, name='profile_edit'),
+    path('profile/', profile_edit_view, name='profile_edit'),
     
     # Password change and reset URLs
     path('password_change/', 
@@ -25,4 +30,5 @@ urlpatterns = [
              template_name='dashboard/password_change_done.html'
          ), 
          name='password_change_done'),
+    path('assessments/<int:assessment_id>/details/', views.assessment_details, name='assessment_details'),     
 ]

@@ -1,0 +1,66 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% csrf_token %}
+
+{% block title %}Assessment Details{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="bg-white shadow-xl rounded-lg overflow-hidden">
+        <div class="bg-teal-600 text-white px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Assessment Details</h1>
+            <a href="{% url 'assessments_management' %}" class="btn btn-white">
+                <i class="ri-arrow-left-line mr-2"></i>Back to Assessments
+            </a>
+        </div>
+
+        <div class="p-6">
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-xl font-semibold mb-4">Assessment Information</h2>
+                    <div class="space-y-3">
+                        <p><strong>Assessment ID:</strong> {{ assessment.id }}</p>
+                        <p><strong>Assessment Date:</strong> {{ assessment.assessment_date|date:"d M Y H:i" }}</p>
+                        <p>
+                            <strong>Risk Level:</strong>
+                            <span
+                                class="badge {% if assessment.risk_prediction == 1 %}badge-red{% else %}badge-green{% endif %}">
+                                {% if assessment.risk_prediction == 1 %}High Risk{% else %}Low Risk{% endif %}
+                            </span>
+                        </p>
+                        <p>
+                            <strong>Status:</strong>
+                            <span class="badge 
+                                {% if assessment.status == 'active' %}badge-yellow
+                                {% elif assessment.status == 'resolved' %}badge-green
+                                {% else %}badge-gray{% endif %}">
+                                {{ assessment.get_status_display }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-xl font-semibold mb-4">Intervention Details</h2>
+                    <div class="space-y-3">
+                        <p>
+                            <strong>Intervention Outcome:</strong>
+                            <span class="badge 
+                                {% if assessment.intervention_outcome == 'successful' %}badge-green
+                                {% elif assessment.intervention_outcome == 'unsuccessful' %}badge-red
+                                {% else %}badge-yellow{% endif %}">
+                                {{ assessment.get_intervention_outcome_display|default:"Not Available" }}
+                            </span>
+                        </p>
+                        {% if assessment.intervention_outcome %}
+                        <p><strong>Outcome Recorded:</strong> {{ assessment.intervention_outcome_date|default:"N/A" }}
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

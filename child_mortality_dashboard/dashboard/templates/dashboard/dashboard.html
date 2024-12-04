@@ -30,6 +30,134 @@
     <script src="{% static 'dashboard/js/3d_scatter.js' %}"></script>
     <script src="{% static 'dashboard/js/dropdown.js' %}"></script>
     <script src="{% static 'dashboard/js/sanky.js' %}"></script>
+    <script>
+        // Dark mode functionality
+        function setupDarkMode() {
+            const htmlElement = document.documentElement;
+            const darkModeToggle = document.getElementById('dark-mode-toggle');
+            const darkModeIcon = document.getElementById('dark-mode-icon');
+
+            // Check saved preference
+            const savedDarkMode = localStorage.getItem('darkMode');
+
+            if (savedDarkMode === 'enabled') {
+                htmlElement.classList.add('dark');
+                darkModeIcon.classList.replace('ri-moon-line', 'ri-sun-line');
+            }
+
+            darkModeToggle.addEventListener('click', () => {
+                htmlElement.classList.toggle('dark');
+
+                if (htmlElement.classList.contains('dark')) {
+                    localStorage.setItem('darkMode', 'enabled');
+                    darkModeIcon.classList.replace('ri-moon-line', 'ri-sun-line');
+                } else {
+                    localStorage.removeItem('darkMode');
+                    darkModeIcon.classList.replace('ri-sun-line', 'ri-moon-line');
+                }
+            });
+        }
+
+        function togglePanel(toggleButton) {
+            const panel = toggleButton.closest('.panel-container');
+            panel.classList.toggle('collapsed');
+        }
+
+        // Existing vaccination tracking functionality
+        function setupVaccinationTracking() {
+            const vaccinationForm = document.getElementById('vaccination-form');
+            const vaccinationStatus = document.getElementById('vaccination-status');
+            const recommendationPanel = document.getElementById('vaccination-recommendations');
+
+            const vaccinations = [
+                { name: 'BCG', recommendedAge: '0-1 months', importance: 'High' },
+                { name: 'Hepatitis B', recommendedAge: '0-1 months', importance: 'High' },
+                { name: 'Rotavirus', recommendedAge: '2-4 months', importance: 'High' },
+                { name: 'DPT', recommendedAge: '2-4 months', importance: 'High' },
+                { name: 'Polio', recommendedAge: '2-4 months', importance: 'High' },
+                { name: 'Pneumococcal', recommendedAge: '2-4 months', importance: 'High' }
+            ];
+
+            vaccinationForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const childAge = document.getElementById('child-age').value;
+                const missingVaccines = vaccinations.filter(vax =>
+                    !document.getElementById(`${vax.name.toLowerCase().replace(' ', '-')}-status`).checked
+                );
+
+                let recommendationHTML = missingVaccines.length > 0
+                    ? '<h3 class="font-bold text-orange-600 mb-2">Recommended Vaccinations:</h3>'
+                    : '<h3 class="font-bold text-green-600 mb-2">All Recommended Vaccinations Up to Date!</h3>';
+
+                missingVaccines.forEach(vax => {
+                    recommendationHTML += `
+                        <div class="bg-yellow-50 p-3 rounded-lg mb-2">
+                            <p class="font-semibold">${vax.name}</p>
+                            <p class="text-sm text-gray-600">Recommended Age: ${vax.recommendedAge}</p>
+                            <p class="text-sm text-red-500">Importance: ${vax.importance}</p>
+                        </div>
+                    `;
+                });
+
+                recommendationPanel.innerHTML = recommendationHTML;
+            });
+        }
+
+        // Initialize vaccination tracking when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function () {
+            setupDarkMode();
+            setupVaccinationTracking();
+        });
+    </script>
+
+    <style>
+        /* Collapsible Panel Styles */
+        .panel-container {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 50;
+            transition: all 0.3s ease;
+        }
+
+        .panel-toggle {
+            position: absolute;
+            top: 10px;
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 0 8px 8px 0;
+            padding: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .panel-content {
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .panel-container.collapsed .panel-content {
+            width: 0;
+            opacity: 0;
+        }
+
+        .panel-container.collapsed {
+            width: 50px;
+        }
+
+        .medical-quick-reference {
+            right: 0;
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
+        }
+
+        .vaccination-tracker {
+            left: 0;
+            border-top-right-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+    </style>
 </head>
 
 <body class="bg-gray-50">
@@ -56,23 +184,15 @@
                         class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-20 border border-gray-200">
                         <ul class="py-1">
                             <li>
-                                <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100 flex items-center">
-                                    <i class="ri-settings-4-line mr-2"></i>Application Settings
-                                </a>
+                                <button id="dark-mode-toggle"
+                                    class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
+                                    <i id="dark-mode-icon" class="ri-moon-line mr-2"></i>Toggle Dark Mode
+                                </button>
                             </li>
                             <li>
-                                <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100 flex items-center">
-                                    <i class="ri-notification-line mr-2"></i>Notifications
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100 flex items-center">
-                                    <i class="ri-database-line mr-2"></i>Data Management
-                                </a>
-                            </li>
-                            <li class="border-t border-gray-200">
-                                <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100 flex items-center">
-                                    <i class="ri-question-line mr-2"></i>Help & Support
+                                <a href="{% url 'assessments_management' %}"
+                                    class="block px-4 py-2 text-gray-800 hover:bg-gray-100 flex items-center">
+                                    <i class="ri-database-line mr-2"></i>Assesment Manager
                                 </a>
                             </li>
                         </ul>
@@ -100,7 +220,7 @@
                         class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg z-20 border border-gray-200">
                         {% if user.is_authenticated %}
                         <div class="p-4 border-b border-gray-200 flex items-center">
-                            <img src="{{ user.profile.avatar.url|default:'/path/to/default/avatar.png' }}"
+                            <img src="'C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/user_profile.PNG'"
                                 alt="{{ user.username }}" class="w-12 h-12 rounded-full mr-4">
                             <div>
                                 <h3 class="text-lg font-semibold">{{ user.get_full_name|default:user.username }}</h3>
@@ -118,12 +238,6 @@
                                 <a href="{% url 'account_change_password' %}"
                                     class="block px-4 py-2 text-gray-800 hover:bg-gray-100 flex items-center">
                                     <i class="ri-lock-line mr-2"></i>Change Password
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{% url 'dashboard' %}"
-                                    class="block px-4 py-2 text-gray-800 hover:bg-gray-100 flex items-center">
-                                    <i class="ri-dashboard-line mr-2"></i>My Dashboard
                                 </a>
                             </li>
                             <li class="border-t border-gray-200">
@@ -161,6 +275,39 @@
                 src="https://data.humdata.org/tools/quickcharts/show;url=https%3A%2F%2Fdata.humdata.org%2Fdataset%2Fdc50cdad-e3dc-47bb-b44d-65426c1c9114%2Fresource%2Ffa987312-36eb-4e61-b2de-4817b8b4f81f;embeddedSource=The%2520DHS%2520Program;embeddedUrl=https%3A%2F%2Fdata.humdata.org%2Fdataset%2Fdc50cdad-e3dc-47bb-b44d-65426c1c9114;embeddedDate=20%2520November%25202024;embeddedConfig=%7B%22configVersion%22%3A5%2C%22bites%22%3A%5B%7B%22tempShowSaveCancelButtons%22%3Afalse%2C%22ingredient%22%3A%7B%22valueColumn%22%3A%22%23indicator%2Bvalue%2Bnum%22%2C%22aggregateFunction%22%3A%22average%22%2C%22dateColumn%22%3Anull%2C%22comparisonValueColumn%22%3Anull%2C%22comparisonOperator%22%3Anull%2C%22filters%22%3A%7B%22filterWith%22%3A%5B%7B%22%23date%2Byear%22%3A%22%24MAX%24%22%7D%2C%7B%22%23indicator%2Bcode%22%3A%22CM_ECMR_C_IMR%22%7D%2C%7B%22%23indicator%2Blabel%2Bcode%22%3A%2214003%22%7D%5D%7D%2C%22title%22%3A%22Infant%20Mortality%20Rate%22%2C%22description%22%3A%22Rate%20is%20for%20the%20period%20of%2010%20years%20preceding%20the%20survey%22%7D%2C%22type%22%3A%22key%20figure%22%2C%22errorMsg%22%3Anull%2C%22computedProperties%22%3A%7B%22explainedFiltersMap%22%3A%7B%7D%2C%22pieChart%22%3Afalse%2C%22dataTitle%22%3A%22Value%22%2C%22unit%22%3Anull%7D%2C%22uiProperties%22%3A%7B%22swapAxis%22%3Atrue%2C%22showGrid%22%3Atrue%2C%22color%22%3A%22%231ebfb3%22%2C%22sortingByValue1%22%3A%22DESC%22%2C%22sortingByCategory1%22%3Anull%2C%22internalColorPattern%22%3A%5B%22%231ebfb3%22%2C%22%230077ce%22%2C%22%23f2645a%22%2C%22%239C27B0%22%5D%2C%22dataTitle%22%3A%22Percent%22%2C%22postText%22%3A%22percent%22%7D%2C%22dataProperties%22%3A%7B%7D%2C%22displayCategory%22%3A%22Charts%22%2C%22hashCode%22%3A-487125335%2C%22_configOrder%22%3A0%7D%5D%2C%22recipeUrl%22%3A%22https%3A%2F%2Fraw.githubusercontent.com%2Fmcarans%2Fhxl-recipes%2Fdev%2Frecipes%2Fdhs%2Frecipe.json%22%7D;singleWidgetMode=true;embeddedTitle=Quick%20Charts;recipeUrl=https%3A%2F%2Fraw.githubusercontent.com%2Fmcarans%2Fhxl-recipes%2Fdev%2Frecipes%2Fdhs%2Frecipe.json;chartSettings=true;chartShare=true"
                 style="border:none; width:100%; min-height:300px">
             </iframe>
+        </div>
+        <!-- Mortality Rate Metrics -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Neonatal Mortality Rate</p>
+                        <p class="text-2xl font-bold text-red-500">{{ neonatal_mortality_rate }} <span
+                                class="text-sm">per 1,000 live births</span></p>
+                    </div>
+                    <i class="ri-heart-pulse-line text-3xl text-red-500"></i>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Infant Mortality Rate</p>
+                        <p class="text-2xl font-bold text-orange-500">{{ infant_mortality_rate }} <span
+                                class="text-sm">per 1,000 live births</span></p>
+                    </div>
+                    <i class="ri-line-chart-line text-3xl text-orange-500"></i>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Under-Five Mortality Rate</p>
+                        <p class="text-2xl font-bold text-purple-500">{{ under_five_mortality_rate }} <span
+                                class="text-sm">per 1,000 live births</span></p>
+                    </div>
+                    <i class="ri-bar-chart-grouped-line text-3xl text-purple-500"></i>
+                </div>
+            </div>
         </div>
 
         <!-- Quick Stats -->
@@ -203,74 +350,145 @@
             </div>
         </div>
 
-        <!-- Main Dashboard Content -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left Column: Main Content -->
-            <div class="lg:col-span-2 space-y-8">
-                <!-- Bokeh Plot Container -->
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <h2 class="text-xl font-bold mb-4 flex items-center">
-                        <i class="ri-line-chart-line mr-3 text-blue-500"></i>
-                        Mortality Trend Analysis
-                    </h2>
-                    <div class="chart-container">
-                        {{ script|safe }}
-                        {{ div|safe }}
-                    </div>
-                </div>
-
-                <!-- LIME Explanation -->
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <h2 class="text-lg font-bold mb-4 flex items-center">
-                        <i class="ri-lightbulb-line mr-2 text-yellow-500"></i>
-                        LIME Model Explanation
-                    </h2>
-                    <div id="lime-explanation" class="text-sm text-gray-700">
-                        {% if lime_explanation %}
-                        {{ lime_explanation|safe }}
-                        {% else %}
-                        <p>Run a prediction to see local interpretable explanations.</p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3D Risk Analysis Scatter Plot -->
+        <!-- Left Column: Main Content -->
+        <div class="lg:col-span-2 space-y-8">
+            <!-- Bokeh Plot Container -->
             <div class="bg-white p-6 rounded-lg shadow">
                 <h2 class="text-xl font-bold mb-4 flex items-center">
-                    <i class="ri-bubble-chart-line mr-3 text-green-500"></i>
-                    Multidimensional Risk Analysis
+                    <i class="ri-line-chart-line mr-3 text-blue-500"></i>
+                    Mortality Trend Analysis
                 </h2>
-                <div id="3d-scatter-plot" class="w-full h-96"></div>
+                <div class="chart-container">
+                    {{ script|safe }}
+                    {{ div|safe }}
+                </div>
             </div>
 
+            <!-- LIME Explanation -->
             <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-bold mb-4">Mortality Risk Assessment</h2>
-                <form method="post" class="space-y-4">
+                <h2 class="text-lg font-bold mb-4 flex items-center">
+                    <i class="ri-lightbulb-line mr-2 text-yellow-500"></i>
+                    LIME Model Explanation
+                </h2>
+                <div id="lime-explanation" class="text-sm text-gray-700">
+                    {% if lime_explanation %}
+                    {{ lime_explanation|safe }}
+                    {% else %}
+                    <p>Run a prediction to see local interpretable explanations.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div>
+
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-8 max-w-6xl mx-auto">
+            <div class="bg-white p-8 rounded-lg shadow-md w-full md:w-1/2">
+                <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">Mortality Risk Assessment</h2>
+                <form method="post" class="space-y-6">
                     {% csrf_token %}
-                    {{ form.as_p }}
-                    <div class="flex gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {% for field in form %}
+                        <div class="form-group">
+                            <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                {{ field.label }}
+                            </label>
+                            <div class="relative">
+                                {{ field }}
+                                {% if field.help_text %}
+                                <p class="text-xs text-gray-500 mt-1">{{ field.help_text }}</p>
+                                {% endif %}
+                                {% if field.errors %}
+                                <div class="text-red-500 text-sm mt-1">
+                                    {{ field.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-4 mt-6">
                         <button type="submit" name="calculate" value="u5mr"
-                            class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105">
                             Calculate U5MR
                         </button>
                         <button type="submit" name="calculate" value="imr"
-                            class="w-full bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                            class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105">
                             Calculate IMR
                         </button>
                     </div>
                 </form>
+
                 {% if has_prediction %}
-                <div class="bg-yellow-100 p-4 rounded-lg shadow mt-6">
-                    <h3 class="font-bold">Result: {{ result_label }}</h3>
-                    <p>Prediction: {{ prediction }}</p>
-                    <p>Probability: {{ probability|floatformat:2 }}</p>
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-6 rounded-r-lg">
+                    <h3 class="font-bold text-yellow-800 mb-2">Prediction Results</h3>
+                    <div class="space-y-2">
+                        <p class="text-gray-700"><strong>Result:</strong> {{ result_label }}</p>
+                        <p class="text-gray-700"><strong>Prediction:</strong> {{ prediction }}</p>
+                        <p class="text-gray-700"><strong>Probability:</strong> {{ probability|floatformat:2 }}</p>
+                    </div>
                 </div>
                 {% endif %}
             </div>
 
+            <div class="bg-white p-8 rounded-lg shadow-md w-full md:w-1/2 border-l-4 border-blue-500">
+                <h2 class="text-2xl font-semibold mb-6 text-blue-800 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3 text-blue-600" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                    </svg>
+                    Key Mortality Factors
+                </h2>
 
+                <div class="space-y-6 text-gray-700">
+                    <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
+                        <h3 class="font-semibold text-blue-800 mb-2">Succeeding Birth Interval (B12)</h3>
+                        <ul class="list-disc list-inside text-sm space-y-1">
+                            <li>Maternal physical recovery limitations</li>
+                            <li>Reduced breastfeeding duration</li>
+                            <li>Increased nutritional stress</li>
+                            <li>Limited childcare resources</li>
+                            <li>Potential pregnancy complications</li>
+                        </ul>
+                    </div>
 
+                    <div class="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
+                        <h3 class="font-semibold text-green-800 mb-2">Region & Healthcare (V101)</h3>
+                        <ul class="list-disc list-inside text-sm space-y-1">
+                            <li>Healthcare infrastructure variations</li>
+                            <li>Socioeconomic regional disparities</li>
+                            <li>Medical service accessibility</li>
+                            <li>Environmental conditions</li>
+                            <li>Cultural health practices</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-400">
+                        <h3 class="font-semibold text-yellow-800 mb-2">Water Source Quality (V113)</h3>
+                        <ul class="list-disc list-inside text-sm space-y-1">
+                            <li>Waterborne disease risks</li>
+                            <li>Sanitation conditions</li>
+                            <li>Water contamination levels</li>
+                            <li>Pathogen exposure</li>
+                            <li>Clean water accessibility</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-400">
+                        <h3 class="font-semibold text-purple-800 mb-2">Postnatal Care (M70)</h3>
+                        <ul class="list-disc list-inside text-sm space-y-1">
+                            <li>Early health issue detection</li>
+                            <li>Infant growth monitoring</li>
+                            <li>Vaccination tracking</li>
+                            <li>Maternal health support</li>
+                            <li>Complication identification</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Right Column: Additional Information -->
@@ -279,6 +497,195 @@
         </div>
     </div>
     </div>
+    <!-- Medical Information Panel -->
+    <div class="panel-container medical-quick-reference">
+        <div class="panel-toggle" onclick="togglePanel(this)">
+            <i class="ri-information-line"></i>
+        </div>
+        <div class="panel-content bg-white shadow-lg rounded-l-lg p-4 w-64 max-h-[80vh] overflow-y-auto">
+            <h2 class="text-xl font-bold mb-4 text-blue-600 flex items-center">
+                <i class="ri-information-line mr-2"></i>Medical Quick Reference
+            </h2>
+            <div class="space-y-4">
+                <div class="bg-blue-50 p-3 rounded-lg">
+                    <h3 class="font-semibold text-blue-800 mb-2">Infant Nutrition</h3>
+                    <ul class="text-sm space-y-1 text-gray-700">
+                        <li>Exclusive breastfeeding: 0-6 months</li>
+                        <li>Introduce solids: After 6 months</li>
+                        <li>Continue breastfeeding: Up to 2 years</li>
+                    </ul>
+                </div>
+                <div class="bg-green-50 p-3 rounded-lg">
+                    <h3 class="font-semibold text-green-800 mb-2">Growth Milestones</h3>
+                    <ul class="text-sm space-y-1 text-gray-700">
+                        <li>Birth weight doubles: 4-5 months</li>
+                        <li>Triples by: 1 year</li>
+                        <li>Height increases: ~25cm/year</li>
+                    </ul>
+                </div>
+                <div class="bg-red-50 p-3 rounded-lg">
+                    <h3 class="font-semibold text-red-800 mb-2">Warning Signs</h3>
+                    <ul class="text-sm space-y-1 text-gray-700">
+                        <li>High fever</li>
+                        <li>Persistent vomiting</li>
+                        <li>Lethargy</li>
+                        <li>Breathing difficulties</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vaccination Tracking Widget -->
+    <div class="panel-container vaccination-tracker">
+        <div class="panel-toggle" onclick="togglePanel(this)">
+            <i class="ri-shield-cross-line"></i>
+        </div>
+        <div class="panel-content bg-white shadow-lg rounded-r-lg p-4 w-64 max-h-[80vh] overflow-y-auto">
+            <h2 class="text-xl font-bold mb-4 text-green-600 flex items-center">
+                <i class="ri-shield-cross-line mr-2"></i>Vaccination Tracker
+            </h2>
+            <form id="vaccination-form" class="space-y-4">
+                <div>
+                    <label for="child-age" class="block text-sm font-medium text-gray-700 mb-2">
+                        Child's Age (months)
+                    </label>
+                    <input type="number" id="child-age" name="child-age"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg" min="0" max="60" required>
+                </div>
+
+                <div class="space-y-2">
+                    <h3 class="text-sm font-semibold text-gray-700">Vaccination Status</h3>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="bcg-status" name="bcg-status" class="mr-2">
+                        <label for="bcg-status" class="text-sm text-gray-700">BCG</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="hepatitis-b-status" name="hepatitis-b-status" class="mr-2">
+                        <label for="hepatitis-b-status" class="text-sm text-gray-700">Hepatitis B</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="rotavirus-status" name="rotavirus-status" class="mr-2">
+                        <label for="rotavirus-status" class="text-sm text-gray-700">Rotavirus</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="dpt-status" name="dpt-status" class="mr-2">
+                        <label for="dpt-status" class="text-sm text-gray-700">DPT</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="polio-status" name="polio-status" class="mr-2">
+                        <label for="polio-status" class="text-sm text-gray-700">Polio</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="pneumococcal-status" name="pneumococcal-status" class="mr-2">
+                        <label for="pneumococcal-status" class="text-sm text-gray-700">Pneumococcal</label>
+                    </div>
+                </div>
+
+                <button type="submit"
+                    class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    Check Recommendations
+                </button>
+            </form>
+
+            <div id="vaccination-recommendations" class="mt-4">
+                <!-- Vaccination recommendations will be dynamically populated here -->
+            </div>
+        </div>
+    </div>
 </body>
+<style>
+    #loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.8);
+        display: none;
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .loader {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        perspective: 800px;
+    }
+
+    .inner {
+        position: absolute;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        border: 3px solid transparent;
+        border-top: 3px solid #4299e1;
+        animation: rotate 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+    }
+
+    .inner.second {
+        border-bottom: 3px solid #48bb78;
+        animation-delay: 0.4s;
+    }
+
+    .inner.third {
+        border-right: 3px solid #9f7aea;
+        animation-delay: 0.8s;
+    }
+
+    @keyframes rotate {
+        0% {
+            transform: rotate(0deg)
+        }
+
+        100% {
+            transform: rotate(360deg)
+        }
+    }
+</style>
+
+<!-- Loading Overlay -->
+<div id="loading-overlay">
+    <div class="loader">
+        <div class="inner"></div>
+        <div class="inner second"></div>
+        <div class="inner third"></div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.querySelector('form');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        form.addEventListener('submit', function () {
+            loadingOverlay.style.display = 'flex';
+        });
+
+        // Optional: Hide loading overlay if page load fails or takes too long
+        window.addEventListener('load', function () {
+            loadingOverlay.style.display = 'none';
+        });
+    });
+</script>
+<style>
+    /* Dark mode specific styles */
+    .dark .bg-white {
+        background-color: #2d3748;
+        color: #e2e8f0;
+    }
+
+    .dark .text-gray-600,
+    .dark .text-gray-700 {
+        color: #a0aec0;
+    }
+
+    .dark .border {
+        border-color: #4a5568;
+    }
+</style>
 
 </html>
