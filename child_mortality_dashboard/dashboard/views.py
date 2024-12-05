@@ -24,11 +24,15 @@ import matplotlib.pyplot as plt
 from dashboard.forms import *
 import io
 import base64
+from pathlib import Path
+
+# Get the absolute path to the root directory
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent  # Going 3 levels up
 
 
 # Load pre-trained models
-u5mr_model = joblib.load('C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/rf_classifier_balanced_u5mr.pkl')
-imr_model = joblib.load('C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/rf_classifier_balanced_imr.pkl')
+u5mr_model = joblib.load(PROJECT_ROOT / 'rf_classifier_balanced_u5mr.pkl')
+imr_model = joblib.load(PROJECT_ROOT / 'rf_classifier_balanced_imr.pkl')
 
 def dashboard(request):
     # Database statistics
@@ -248,10 +252,10 @@ def add_lime_explanation_to_context(request, context, input_data, model_type):
     # Choose appropriate model and training data path
     if model_type == 'u5mr':
         model = u5mr_model
-        training_data_path = 'C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/u5mr_training_data.pkl'
+        training_data_path = PROJECT_ROOT / 'u5mr_training_data.pkl'
     elif model_type == 'imr':
         model = imr_model
-        training_data_path = 'C:/Users/tlche/OneDrive/Documents/GitHub/Predictive-Analytics-for-Tuberculosis-TB-Incidence-and-Treatment-Adherence/imr_training_data.pkl'
+        training_data_path = PROJECT_ROOT / 'imr_training_data.pkl'
     else:
         return context
     
