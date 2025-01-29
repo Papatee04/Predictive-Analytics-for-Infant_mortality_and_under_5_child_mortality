@@ -46,7 +46,7 @@ Here are some previews of the dashboard in action:
 🎥 Demo Video
 Check out this short demo of the Child Mortality Prediction Dashboard in action:
 
-📺 Final Year Project Demo
+📺 [Final Year Project Demo](https://github.com/Papatee04/Predictive-Analytics-for-Infant_mortality_and_under_5_child_mortality/blob/main/screenshots/final%20year%20project%20video.mp4)
 
 🔥 Features
 ✔️ User Authentication: Secure sign-up and login functionality.
