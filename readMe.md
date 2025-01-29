@@ -29,6 +29,63 @@ For U5MR predictions, click the U5MR Predict button.
 Step 3: View Results
 Once logged in, your predictions will be processed.
 The results will be displayed on the dashboard.
+
+🛠 Running the Project Locally
+To set up and run the Child Mortality Prediction Dashboard on your local machine, follow these steps:
+
+1️⃣ Clone or Download the Repository
+Open a terminal and run:
+
+sh
+Copy
+Edit
+git clone https://github.com/Papatee04/Predictive-Analytics-for-Infant_mortality_and_under_5_child_mortality.git
+Alternatively, you can download the ZIP file from GitHub and extract it.
+
+2️⃣ Navigate to the Project Directory
+Change into the project folder:
+
+sh
+Copy
+Edit
+cd Predictive-Analytics-for-Infant_mortality_and_under_5_child_mortality
+3️⃣ Activate the Virtual Environment
+Before running the Django app, activate the virtual environment:
+
+On Windows (Command Prompt or PowerShell):
+sh
+Copy
+Edit
+./tbvenv/Scripts/Activate
+On macOS/Linux:
+sh
+Copy
+Edit
+source tbvenv/bin/activate
+After activation, your terminal should show (tbvenv), indicating the virtual environment is active.
+
+4️⃣ Navigate to the Django App Directory
+Move into the Django application folder:
+
+sh
+Copy
+Edit
+cd child_mortality_dashboard
+5️⃣ Start the Django Development Server
+Run the following command to start the server:
+
+sh
+Copy
+Edit
+python manage.py runserver 0.0.0.0:8000
+This will start the app, and you can now access it in your browser at:
+🔗 http://127.0.0.1:8000/dashboard/
+
+📂 Machine Learning Models & Notebooks
+The repository contains Jupyter Notebook (.ipynb) files used to train and evaluate the models.
+You can explore these notebooks in the main repository folder to understand the training process.
+The exported models (.pkl files) are also available in the repository for inference.
+
 📸 Screenshots
 Here are some previews of the dashboard in action:
 
